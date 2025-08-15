@@ -8,13 +8,14 @@ using GMP3Integration.Application.Services;
 using GMP3Integration.Infrastructure.Services;
 using GMP3Integration.Infrastructure.Services.Decorators;
 using MediatR;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Context;
-using Microsoft.AspNetCore.RateLimiting;
-using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.Mvc;
 using System.Reflection;
+using System.Threading.RateLimiting;
 
 
 
@@ -102,6 +103,36 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddValidatorsFromAssembly(Assembly.Load("GMP3Integration.Application"));
 var app = builder.Build();
 
+var fwdOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor
+};
+fwdOptions.KnownNetworks.Clear();
+fwdOptions.KnownProxies.Clear();
+fwdOptions.RequireHeaderSymmetry = false;
+fwdOptions.ForwardLimit = null;
+fwdOptions.KnownProxies.Add(System.Net.IPAddress.Parse("10.0.0.10")); 
+app.UseForwardedHeaders(fwdOptions);
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
+app.Use((ctx, next) =>
+{
+    var proto = ctx.Request.Headers["X-Forwarded-Proto"].ToString();
+    if (!string.IsNullOrEmpty(proto) && proto.Equals("http", StringComparison.OrdinalIgnoreCase))
+    {
+        var host = ctx.Request.Headers["X-Forwarded-Host"].ToString();
+        if (string.IsNullOrEmpty(host)) host = ctx.Request.Host.Value;
+        var httpsUrl = $"https://{host}{ctx.Request.PathBase}{ctx.Request.Path}{ctx.Request.QueryString}";
+        ctx.Response.Redirect(httpsUrl, permanent: false); 
+        return Task.CompletedTask;
+    }
+    return next();
+});
+
 
 app.UseSerilogRequestLogging(opts =>
 {
@@ -130,8 +161,9 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseRateLimiter();                 // ← ekle
 app.UseMiddleware<ApiExceptionMiddleware>();
 
-app.UseHttpsRedirection();
 app.UseAuthorization();
+
+app.UseRouting();
 
 app.MapControllers();
 
