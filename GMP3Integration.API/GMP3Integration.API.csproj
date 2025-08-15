@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+	  <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="FluentValidation" Version="11.9.0" />
+		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.0" />
+		<PackageReference Include="MediatR" Version="12.4.1" />
+		<PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" />
+		<PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
+		<PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
+		<PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+		<PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+		<PackageReference Include="System.Text.Json" Version="9.0.8" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.0" />
+	</ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GMP3Integration.Application\GMP3Integration.Application.csproj" />
+    <ProjectReference Include="..\GMP3Integration.Infrastructure\GMP3Integration.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

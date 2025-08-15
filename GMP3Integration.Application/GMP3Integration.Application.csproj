@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{86C3ED32-2995-4614-ABE5-B67332F4786B}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>GMP3Integration.Application</RootNamespace>
+    <AssemblyName>GMP3Integration.Application</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="FluentValidation, Version=11.0.0.0, Culture=neutral, PublicKeyToken=7de548da2fbae0f0, processorArchitecture=MSIL">
+      <HintPath>..\packages\FluentValidation.11.9.0\lib\netstandard2.0\FluentValidation.dll</HintPath>
+    </Reference>
+    <Reference Include="FluentValidation.DependencyInjectionExtensions, Version=11.0.0.0, Culture=neutral, PublicKeyToken=7de548da2fbae0f0, processorArchitecture=MSIL">
+      <HintPath>..\packages\FluentValidation.DependencyInjectionExtensions.11.9.0\lib\netstandard2.0\FluentValidation.DependencyInjectionExtensions.dll</HintPath>
+    </Reference>
+    <Reference Include="MediatR, Version=12.0.0.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2, processorArchitecture=MSIL">
+      <HintPath>..\packages\MediatR.12.4.1\lib\netstandard2.0\MediatR.dll</HintPath>
+    </Reference>
+    <Reference Include="MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2, processorArchitecture=MSIL">
+      <HintPath>..\packages\MediatR.Contracts.2.0.1\lib\netstandard2.0\MediatR.Contracts.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=9.0.0.8, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.AsyncInterfaces.9.0.8\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Build.Framework" />
+    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=9.0.0.8, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.9.0.8\lib\net462\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Logging.Abstractions.8.0.0\lib\net462\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Options, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Options.8.0.0\lib\net462\Microsoft.Extensions.Options.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Primitives, Version=9.0.0.8, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Primitives.9.0.8\lib\net462\Microsoft.Extensions.Primitives.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Buffers, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Buffers.4.6.1\lib\net462\System.Buffers.dll</HintPath>
+    </Reference>
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Diagnostics.DiagnosticSource, Version=9.0.0.8, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Diagnostics.DiagnosticSource.9.0.8\lib\net462\System.Diagnostics.DiagnosticSource.dll</HintPath>
+    </Reference>
+    <Reference Include="System.IO.Pipelines, Version=9.0.0.8, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.IO.Pipelines.9.0.8\lib\net462\System.IO.Pipelines.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Memory, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Memory.4.6.3\lib\net462\System.Memory.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Numerics.Vectors, Version=4.1.6.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Numerics.Vectors.4.6.1\lib\net462\System.Numerics.Vectors.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.1.2\lib\net462\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Text.Encodings.Web, Version=9.0.0.8, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Text.Encodings.Web.9.0.8\lib\net462\System.Text.Encodings.Web.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Text.Json, Version=8.0.0.5, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Text.Json.8.0.5\lib\net462\System.Text.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.4.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Threading.Tasks.Extensions.4.6.3\lib\net462\System.Threading.Tasks.Extensions.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="DTOs\CancelTrasnaction\CancelTransactionRequest.cs" />
+    <Compile Include="DTOs\CancelTrasnaction\CancelTransactionResponse.cs" />
+    <Compile Include="DTOs\CloseTransaction\CloseTransactionRequest.cs" />
+    <Compile Include="DTOs\CloseTransaction\CloseTransactionResponse.cs" />
+    <Compile Include="DTOs\DepartmentConfiguration\DepartmentConfigItem.cs" />
+    <Compile Include="DTOs\DepartmentConfiguration\SetDepartmentsRequest.cs" />
+    <Compile Include="DTOs\DepartmentConfiguration\SetDepartmentsResponse.cs" />
+    <Compile Include="DTOs\ItemSale\ItemSaleRequest.cs" />
+    <Compile Include="DTOs\ItemSale\ItemSaleResponse.cs" />
+    <Compile Include="DTOs\ITransactionWorkflowService\CompleteSaleRequest.cs" />
+    <Compile Include="DTOs\ITransactionWorkflowService\CompleteSaleResponse.cs" />
+    <Compile Include="DTOs\ITransactionWorkflowService\Inputs\WorkflowItem.cs" />
+    <Compile Include="DTOs\ITransactionWorkflowService\Inputs\WorkflowMessage.cs" />
+    <Compile Include="DTOs\ITransactionWorkflowService\Inputs\WorkflowPayment.cs" />
+    <Compile Include="DTOs\ITransactionWorkflowService\Inputs\WorkflowTaxRate.cs" />
+    <Compile Include="DTOs\OptionFlags\SetOptionFlagsRequest.cs" />
+    <Compile Include="DTOs\OptionFlags\SetOptionFlagsResponse.cs" />
+    <Compile Include="DTOs\TaxRates\GetTaxRatesResponse.cs" />
+    <Compile Include="DTOs\Payment\PaymentRequest.cs" />
+    <Compile Include="DTOs\Payment\PaymentResponse.cs" />
+    <Compile Include="DTOs\PrintBeforeMf\PrintBeforeMfRequest.cs" />
+    <Compile Include="DTOs\PrintBeforeMf\PrintBeforeMfResponse.cs" />
+    <Compile Include="DTOs\PrintMessage\PrintMessageRequest.cs" />
+    <Compile Include="DTOs\PrintMessage\PrintMessageResponse.cs" />
+    <Compile Include="DTOs\PrintMf\PrintMfRequest.cs" />
+    <Compile Include="DTOs\PrintMf\PrintMfResponse.cs" />
+    <Compile Include="DTOs\PrintTotalsAndPayments\PrintTotalsAndPaymentsRequest.cs" />
+    <Compile Include="DTOs\PrintTotalsAndPayments\PrintTotalsAndPaymentsResponse.cs" />
+    <Compile Include="DTOs\Refund\RefundRequest.cs" />
+    <Compile Include="DTOs\Refund\RefundResponse.cs" />
+    <Compile Include="DTOs\Start\StartTransactionRequest.cs" />
+    <Compile Include="DTOs\Start\StartTransactionResponse.cs" />
+    <Compile Include="DTOs\TaxRates\TaxRateDto.cs" />
+    <Compile Include="DTOs\TicketHeader\SendTicketHeaderRequest.cs" />
+    <Compile Include="DTOs\TicketHeader\SendTicketHeaderResponse.cs" />
+    <Compile Include="Features\Behaviors\LoggingBehavior.cs" />
+    <Compile Include="Features\Behaviors\ValidationBehavior.cs" />
+    <Compile Include="Features\Commands\CancelTrasnaction\CancelTransactionCommand.cs" />
+    <Compile Include="Features\Commands\CancelTrasnaction\CancelTransactionHandler.cs" />
+    <Compile Include="Features\Commands\CompleteSale\CompleteSaleCommand.cs" />
+    <Compile Include="Features\Commands\CompleteSale\CompleteSaleHandler.cs" />
+    <Compile Include="Features\Commands\DepartmentConfiguration\SetDepartmentsCommand.cs" />
+    <Compile Include="Features\Commands\DepartmentConfiguration\SetDepartmentsHandler.cs" />
+    <Compile Include="Features\Commands\ItemSale\ItemSaleCommand.cs" />
+    <Compile Include="Features\Commands\ItemSale\ItemSaleHandler.cs" />
+    <Compile Include="Features\Commands\OptionFlags\SetOptionFlagsCommand.cs" />
+    <Compile Include="Features\Commands\OptionFlags\SetOptionFlagsHandler.cs" />
+    <Compile Include="Features\Commands\Payment\MakePaymentCommand.cs" />
+    <Compile Include="Features\Commands\Payment\MakePaymentHandler.cs" />
+    <Compile Include="Features\Commands\PrintBeforeMf\PrintBeforeMfCommand.cs" />
+    <Compile Include="Features\Commands\PrintBeforeMf\PrintBeforeMfHandler.cs" />
+    <Compile Include="Features\Commands\CloseTransaction\CloseTransactionCommand.cs" />
+    <Compile Include="Features\Commands\CloseTransaction\CloseTransactionHandler.cs" />
+    <Compile Include="Features\Commands\PrintMessage\PrintMessageCommand.cs" />
+    <Compile Include="Features\Commands\PrintMessage\PrintMessageHandler.cs" />
+    <Compile Include="Features\Commands\PrintMf\PrintMfCommand.cs" />
+    <Compile Include="Features\Commands\PrintMf\PrintMfHandler.cs" />
+    <Compile Include="Features\Commands\PrintTotalsAndPayments\PrintTotalsAndPaymentsCommand.cs" />
+    <Compile Include="Features\Commands\PrintTotalsAndPayments\PrintTotalsAndPaymentsHandler.cs" />
+    <Compile Include="Features\Commands\Start\StartTransactionCommand.cs" />
+    <Compile Include="Features\Commands\Start\StartTransactionHandler.cs" />
+    <Compile Include="Features\Commands\TicketHeader\SendTicketHeaderCommand.cs" />
+    <Compile Include="Features\Commands\TicketHeader\SendTicketHeaderHandler.cs" />
+    <Compile Include="Features\Queries\GetTaxRates\GetTaxRatesHandler.cs" />
+    <Compile Include="Features\Queries\GetTaxRates\GetTaxRatesQuery.cs" />
+    <Compile Include="Interfaces\IGmp3Service.cs" />
+    <Compile Include="Interfaces\ITransactionWorkflowService.cs" />
+    <Compile Include="Options\Gmp3Options.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\Gmp3Service.cs" />
+    <Compile Include="Services\TransactionWorkflowService.cs" />
+    <Compile Include="Validators\CompleteSaleCommandValidator.cs" />
+    <Compile Include="Validators\CompleteSaleRequestValidator.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GMP3Integration.Domain\GMP3Integration.Domain.csproj">
+      <Project>{0345b3db-b5b5-49fb-8b49-11def8f3b5a0}</Project>
+      <Name>GMP3Integration.Domain</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets" Condition="Exists('..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets'))" />
+  </Target>
+</Project>
