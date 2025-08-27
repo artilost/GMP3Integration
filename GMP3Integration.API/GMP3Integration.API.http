@@ -1,6 +1,61 @@
 @GMP3Integration.API_HostAddress = http://localhost:5064
 
-GET {{GMP3Integration.API_HostAddress}}/weatherforecast/
+### Health Check
+GET {{GMP3Integration.API_HostAddress}}/api/health
 Accept: application/json
 
-###
+### Start Transaction - PAX A910SF
+POST {{GMP3Integration.API_HostAddress}}/api/gmp3/start
+Content-Type: application/json
+
+{
+  "currentInterface": "TCP:192.168.137.99:7500"
+}
+
+### Start Transaction - Default Interface (from config)
+POST {{GMP3Integration.API_HostAddress}}/api/gmp3/start
+Content-Type: application/json
+
+{}
+
+### Complete Sale Example
+POST {{GMP3Integration.API_HostAddress}}/api/gmp3/complete-sale
+Content-Type: application/json
+
+{
+  "currentInterface": "TCP:192.168.137.99:7500",
+  "activeFlags": 0,
+  "flagsToBeSet": 0,
+  "ticketType": 1,
+  "items": [
+    {
+      "type": 1,
+      "subType": 0,
+      "deptIndex": 0,
+      "amount": 1000,
+      "currencyCode": 949,
+      "count": 1,
+      "unitType": 1,
+      "itemCode": "TEST001",
+      "name": "Test Ürün",
+      "barcode": "",
+      "flag": 0
+    }
+  ],
+  "payment": {
+    "typeOfPayment": 1,
+    "subtypeOfPayment": 0,
+    "payAmount": 1000,
+    "payAmountCurrencyCode": 949,
+    "bankPaymentUniqueId": ""
+  },
+  "messages": [
+    {
+      "messageText": "Test mesajı"
+    }
+  ]
+}
+
+### Get Tax Rates
+GET {{GMP3Integration.API_HostAddress}}/api/gmp3/tax-rates
+Accept: application/json

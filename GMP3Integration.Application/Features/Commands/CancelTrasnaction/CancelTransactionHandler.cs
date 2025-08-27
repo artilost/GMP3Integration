@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-
+/*
 namespace GMP3Integration.Application.Features.Commands.CancelTrasnaction{
     public class CancelTransactionHandler : IRequestHandler<CancelTransactionCommand, CancelTransactionResponse>
     {
@@ -15,6 +15,7 @@ namespace GMP3Integration.Application.Features.Commands.CancelTrasnaction{
         public CancelTransactionHandler(IGmp3Service gmp3Service) { _gmp3Service = gmp3Service; }
 
         public async Task<CancelTransactionResponse> Handle(CancelTransactionCommand request, CancellationToken cancellationToken)
-            => await _gmp3Service.CancelTransactionAsync(request.Request);
+            
     }
 }
+*/

@@ -10,10 +10,8 @@ namespace GMP3Integration.Application.Features.Commands.Start
 {
     public class StartTransactionCommand : IRequest<StartTransactionResponse>
     {
-        public StartTransactionRequest Request { get; private set; }
-        public StartTransactionCommand(StartTransactionRequest request)
-        {
-            Request = request;
-        }
+        // Body boş gelirse config'teki interface kullanılacak
+        public string CurrentInterface { get; set; }
+        // public int TimeoutMs { get; set; } = 3000;
     }
 }

@@ -49,6 +49,9 @@
       <HintPath>..\packages\Microsoft.Bcl.AsyncInterfaces.9.0.8\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Build.Framework" />
+    <Reference Include="Microsoft.Extensions.Configuration.Abstractions, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Configuration.Abstractions.8.0.0\lib\net462\Microsoft.Extensions.Configuration.Abstractions.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=9.0.0.8, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.9.0.8\lib\net462\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
     </Reference>
@@ -107,6 +110,8 @@
     <Compile Include="DTOs\DepartmentConfiguration\DepartmentConfigItem.cs" />
     <Compile Include="DTOs\DepartmentConfiguration\SetDepartmentsRequest.cs" />
     <Compile Include="DTOs\DepartmentConfiguration\SetDepartmentsResponse.cs" />
+    <Compile Include="DTOs\ForceReset\ForceResetRequest.cs" />
+    <Compile Include="DTOs\ForceReset\ForceResetResponse.cs" />
     <Compile Include="DTOs\ItemSale\ItemSaleRequest.cs" />
     <Compile Include="DTOs\ItemSale\ItemSaleResponse.cs" />
     <Compile Include="DTOs\ITransactionWorkflowService\CompleteSaleRequest.cs" />
@@ -165,6 +170,8 @@
     <Compile Include="Features\Commands\TicketHeader\SendTicketHeaderHandler.cs" />
     <Compile Include="Features\Queries\GetTaxRates\GetTaxRatesHandler.cs" />
     <Compile Include="Features\Queries\GetTaxRates\GetTaxRatesQuery.cs" />
+    <Compile Include="Interfaces\IGmp3InteropService.cs" />
+    <Compile Include="Interfaces\IGmp3Link.cs" />
     <Compile Include="Interfaces\IGmp3Service.cs" />
     <Compile Include="Interfaces\ITransactionWorkflowService.cs" />
     <Compile Include="Options\Gmp3Options.cs" />

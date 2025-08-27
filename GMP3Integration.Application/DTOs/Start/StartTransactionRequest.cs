@@ -9,7 +9,6 @@ namespace GMP3Integration.Application.DTOs
 {
     public class StartTransactionRequest
     {
-        //[JsonPropertyName("currentInterface")]
         public string CurrentInterface { get; set; }
     }
 }

@@ -4,6 +4,7 @@ using GMP3Integration.Application.DTOs.CancelTansaction;
 using GMP3Integration.Application.DTOs.CanselTransaction;
 using GMP3Integration.Application.DTOs.CloseTransaction;
 using GMP3Integration.Application.DTOs.DepertmenConfiguration;
+using GMP3Integration.Application.DTOs.ForceReset;
 using GMP3Integration.Application.DTOs.ItemSale;
 using GMP3Integration.Application.DTOs.ITransactionWorkflowService;
 using GMP3Integration.Application.DTOs.OptionFlags;
@@ -33,6 +34,7 @@ using GMP3Integration.Application.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.Tasks;
 using System.Threading.Tasks;
 
 namespace GMP3Integration.API.Controllers
@@ -70,10 +72,12 @@ namespace GMP3Integration.API.Controllers
 
         /// </summary>
         [HttpPost("start")]
-        public async Task<ActionResult<StartTransactionResponse>> Start([FromBody] StartTransactionRequest request)
+        public async Task<ActionResult<StartTransactionResponse>> Start([FromBody] StartTransactionCommand command)
         {
-            var resp = await _mediator.Send(new StartTransactionCommand(request));
-            return Ok(resp);
+            // Body boş gelirse config'teki "TCP:192.168.137.99:7500" kullanılır.
+            var res = await _mediator.Send(command ?? new StartTransactionCommand());
+            if (res.Success) return Ok(res);
+            return StatusCode(500, res);
         }
 
         [ServiceFilter(typeof(TransactionHandleScopeFilter))]

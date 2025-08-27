@@ -9,5 +9,7 @@ namespace GMP3Integration.Application.DTOs.CancelTansaction
     public class CancelTransactionResponse
     {
         public bool Success { get; set; }
+        public int ResultCode { get; set; }
+        public string Message { get; set; }
     }
 }

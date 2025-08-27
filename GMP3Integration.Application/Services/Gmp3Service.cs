@@ -3,6 +3,7 @@ using GMP3Integration.Application.DTOs.CancelTansaction;
 using GMP3Integration.Application.DTOs.CanselTransaction;
 using GMP3Integration.Application.DTOs.CloseTransaction;
 using GMP3Integration.Application.DTOs.DepertmenConfiguration;
+using GMP3Integration.Application.DTOs.ForceReset;
 using GMP3Integration.Application.DTOs.ItemSale;
 using GMP3Integration.Application.DTOs.OptionFlags;
 using GMP3Integration.Application.DTOs.Payment;
@@ -24,11 +25,17 @@ namespace GMP3Integration.Application.Services
 {
     public class Gmp3Service : IGmp3Service
     {
+
         public Task<CancelTransactionResponse> CancelTransactionAsync(CancelTransactionRequest request)
         {
             throw new NotImplementedException();
         }
         public Task<CloseTransactionResponse> CloseTransactionAsync(CloseTransactionRequest request)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ForceResetResponse> ForceResetAsync(ForceResetRequest request)
         {
             throw new NotImplementedException();
         }

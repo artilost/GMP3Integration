@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using GMP3Integration.Infrastructure.Interop;
 using GMP3Integration.API.Filters;
 using GMP3Integration.API.Middlewares;
 using GMP3Integration.Application.Features.Behaviors;
@@ -15,10 +16,8 @@ using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Context;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading.RateLimiting;
-
-
-
 
 var builder = WebApplication.CreateBuilder(args);
 // Serilog: config + LogContext’tan zenginleştir(CorrelationId/transactionHandle scope’larını alır)
@@ -29,8 +28,10 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog(); // ← default logger yerine Serilog
 
-builder.Services.AddScoped<Gmp3InteropService>();
+//builder.Services.AddScoped<Gmp3InteropService>();
 
+builder.Services.AddScoped<GMP3Integration.Application.Interfaces.IGmp3Link,GMP3Integration.Infrastructure.Services.Gmp3Link>();
+builder.Services.AddScoped<IGmp3Service, Gmp3InteropService>();
 builder.Services.AddScoped<IGmp3Service>(sp =>
 {
     var inner = sp.GetRequiredService<Gmp3InteropService>();
@@ -101,7 +102,36 @@ builder.Services.AddMediatR(cfg =>
     );
 });
 builder.Services.AddValidatorsFromAssembly(Assembly.Load("GMP3Integration.Application"));
+[DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
+static extern bool SetDllDirectory(string lpPathName);
+
+var dllDir = Path.Combine(AppContext.BaseDirectory, "native", "win-x64");
+Directory.SetCurrentDirectory(dllDir);
+
+var xmlPath = Path.Combine(dllDir, "GMP.XML");
+Console.WriteLine($"DLL dir: {dllDir} | XML exists: {File.Exists(xmlPath)}");
+
 var app = builder.Build();
+var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("NativeAudit");
+NativeAudit.Run(logger);
+
+var nativePath = Path.Combine(AppContext.BaseDirectory, "native", "win-x64");
+if (Directory.Exists(nativePath))
+{
+    SetDllDirectory(nativePath);
+    Directory.SetCurrentDirectory(nativePath); // <- XML ve logs için kritik
+    app.Logger.LogInformation("Native path: {np}", nativePath);
+    app.Logger.LogInformation("CurrentDirectory: {cd}", Directory.GetCurrentDirectory());
+
+    // XML var mı kontrol et
+    string[] xmlCandidates = { "GMP.xml", "GMPSmartDLL.xml", "GMPConfig.xml" };
+    foreach (var x in xmlCandidates)
+        app.Logger.LogInformation("XML exists [{0}]: {1}", x, File.Exists(Path.Combine(nativePath, x)));
+}
+else
+{
+    app.Logger.LogWarning("Native path not found: {np}", nativePath);
+}
 
 var fwdOptions = new ForwardedHeadersOptions
 {
