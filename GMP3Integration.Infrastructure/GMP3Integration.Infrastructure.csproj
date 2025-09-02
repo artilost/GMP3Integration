@@ -55,6 +55,10 @@
     <Reference Include="Microsoft.Extensions.Primitives, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Extensions.Primitives.8.0.0\lib\net462\Microsoft.Extensions.Primitives.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Polly, Version=7.0.0.0, Culture=neutral, PublicKeyToken=c8a3ffc3f8f825cc, processorArchitecture=MSIL">
       <HintPath>..\packages\Polly.7.2.4\lib\net472\Polly.dll</HintPath>
     </Reference>
@@ -111,11 +115,9 @@
     <Compile Include="Interop\Native\PInvoke\Gmp3InterfaceMethods.cs" />
     <Compile Include="Interop\Native\PInvoke\Gmp3LegacyMethods.cs" />
 
-    <Compile Include="Services\ConfigBootstrapper.cs" />
     <Compile Include="Services\Decorators\ResilientGmp3Service.cs" />
     <Compile Include="Services\Gmp3InteropService.cs" />
     <Compile Include="Services\InterfaceHelper.cs" />
-    <Compile Include="Services\NetProbe.cs" />
     <Compile Include="Services\Pairing\Gmp3PairingService.cs" />
     <Compile Include="Services\Connection\Gmp3ConnectionService.cs" />
     <Compile Include="Services\Transaction\Gmp3TransactionService.cs" />

@@ -35,15 +35,12 @@ namespace GMP3Integration.Infrastructure.Services.Pairing
         {
             _log.LogInformation("🔧 Hızlı pairing başlatılıyor...");
             
-            // Emülatördeki gibi pairing bilgileri oluştur
+            // Emülatördeki gibi pairing bilgileri oluştur (hardcoded values)
             var pairing = new ST_GMP_PAIR();
-            pairing.UniqueId = new byte[24]; // Initialize byte array
-            pairing.PairingData = new byte[256]; // Initialize byte array
-            pairing.PairingDataLength = 0;
             pairing.szExternalDeviceBrand = "WORLDLINE";
             pairing.szExternalDeviceModel = "IWE280";
-            pairing.szExternalDeviceSerialNumber = "12344567"; // Emülatördeki gibi
-            pairing.szEcrSerialNumber = "JHWE20000079"; // Emülatördeki gibi
+            pairing.szExternalDeviceSerialNumber = "12344567";
+            pairing.szEcrSerialNumber = "JHWE20000079";
             pairing.szProcOrderNumber = "000001";
             pairing.szProcDate = DateTime.Now.ToString("ddMMyy");
             pairing.szProcTime = DateTime.Now.ToString("HHmmss");
@@ -51,8 +48,8 @@ namespace GMP3Integration.Infrastructure.Services.Pairing
             _log.LogInformation("🔧 Pairing bilgileri: Brand={brand}, Model={model}, Serial={serial}", 
                 pairing.szExternalDeviceBrand, pairing.szExternalDeviceModel, pairing.szExternalDeviceSerialNumber);
             
-            // Emülatördeki gibi sadece StartPairingInit çağır (StartPairingInitWithPairing_All değil)
-            var rcInit = Gmp3NativeMethods.StartPairingInit(iface, ref pairing, 10000);
+            // Emülatördeki gibi sadece StartPairingInit çağır (JSON-based)
+            var rcInit = Gmp3NativeMethods.StartPairingInit(iface, ref pairing);
             _log.LogInformation("StartPairingInit({iface}) rc=0x{rc:X}", iface, rcInit);
             
             // Emülatördeki gibi response'u kontrol et
@@ -77,14 +74,11 @@ namespace GMP3Integration.Infrastructure.Services.Pairing
             _log.LogInformation("🔧 Emülatördeki gibi pairing bilgileri oluşturuluyor...");
             
             var pairing = new ST_GMP_PAIR();
-            // Emülatördeki gibi pairing bilgileri
-            pairing.UniqueId = new byte[24]; // Initialize byte array
-            pairing.PairingData = new byte[256]; // Initialize byte array
-            pairing.PairingDataLength = 0;
+            // Emülatördeki gibi pairing bilgileri (hardcoded values)
             pairing.szExternalDeviceBrand = "WORLDLINE";
             pairing.szExternalDeviceModel = "IWE280";
-            pairing.szExternalDeviceSerialNumber = "12344567"; // Emülatördeki gibi
-            pairing.szEcrSerialNumber = "JHWE20000079"; // Emülatördeki gibi
+            pairing.szExternalDeviceSerialNumber = "12344567";
+            pairing.szEcrSerialNumber = "JHWE20000079";
             pairing.szProcOrderNumber = "000001";
             pairing.szProcDate = DateTime.Now.ToString("ddMMyy");
             pairing.szProcTime = DateTime.Now.ToString("HHmmss");
@@ -95,32 +89,38 @@ namespace GMP3Integration.Infrastructure.Services.Pairing
             // 1) Önce klasik pairing dene (JSON çalışmıyor)
             _log.LogInformation("🔧 FP3_StartPairingInit klasik yöntem ile deneniyor...");
             var pairing2 = new ST_GMP_PAIR();
-            pairing2.UniqueId = new byte[24]; // Initialize byte array
-            pairing2.PairingData = new byte[256]; // Initialize byte array
-            pairing2.PairingDataLength = 0;
-            var rcInit = Gmp3NativeMethods.StartPairingInit_All(iface, ref pairing2, pairingTimeoutMs);
+            pairing2.szExternalDeviceBrand = "WORLDLINE";
+            pairing2.szExternalDeviceModel = "IWE280";
+            pairing2.szExternalDeviceSerialNumber = "12344567";
+            pairing2.szEcrSerialNumber = "JHWE20000079";
+            pairing2.szProcOrderNumber = "000001";
+            pairing2.szProcDate = DateTime.Now.ToString("ddMMyy");
+            pairing2.szProcTime = DateTime.Now.ToString("HHmmss");
+            var rcInit = Gmp3NativeMethods.StartPairingInit_All(iface, ref pairing2, pairingTimeoutMs);  // String!
             _log.LogWarning("StartPairingInit({iface}) rc=0x{rc:X}", iface, rcInit);
 
             // 4) Bekle → Echo/Ping stabilize olana dek
             var deadline = DateTime.UtcNow.AddMilliseconds(waitUntilOkMs);
             int last = Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE;
             _log.LogInformation("🔧 Pairing döngüsü başladı - {waitUntilOkMs}ms bekleniyor...");
+            
             while (DateTime.UtcNow < deadline)
             {
                 // Önce küçük bir gecikme
                 System.Threading.Thread.Sleep(1000);
 
-                // Klasik Echo dene (JSON çalışmıyor)
-                last = Gmp3NativeMethods.Echo(iface, echoTimeoutMs);
-                _log.LogInformation("ECHO(wait {iface}) rc=0x{rc:X}", iface, last);
+                // Klasik Echo dene (handle ile)
+                var echo = new ST_ECHO();
+                last = Gmp3NativeMethods.Echo(iface, ref echo, echoTimeoutMs);
+                _log.LogInformation("ECHO(wait handle=0x{handle:X}) rc=0x{rc:X}", iface, last);
                 if (last == Gmp3NativeMethods.TRAN_RESULT_OK) 
                 {
                     _log.LogInformation("🎉 Pairing başarılı! Echo OK!");
                     return last;
                 }
-                // Ping dene
+                // Ping dene (handle ile)
                 last = Gmp3NativeMethods.Ping(iface, echoTimeoutMs);
-                _log.LogInformation("PING(wait {iface}) rc=0x{rc:X}", iface, last);
+                _log.LogInformation("PING(wait handle=0x{handle:X}) rc=0x{rc:X}", iface, last);
                 if (last == Gmp3NativeMethods.TRAN_RESULT_OK) 
                 {
                     _log.LogInformation("🎉 Pairing başarılı! Ping OK!");

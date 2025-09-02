@@ -24,7 +24,7 @@
 		<LogPrintSourceFileOpen>FALSE</LogPrintSourceFileOpen>
 		<LogPrintSourceLineOpen>FALSE</LogPrintSourceLineOpen>
 	</LOG>
-	<INTERFACE ID="TCPIP" DEFAULT="TRUE">
+	<INTERFACE ID="COM1" DEFAULT="TRUE">
 		<RetryCounter>3</RetryCounter>
 		<IpRetryCount>3</IpRetryCount>
 		<AckTimeOut>3000</AckTimeOut>

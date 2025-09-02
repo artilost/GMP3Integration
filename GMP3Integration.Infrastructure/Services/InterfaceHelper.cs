@@ -30,30 +30,37 @@ namespace GMP3Integration.Infrastructure.Services
             {
                 _logger?.LogInformation("Interface bilgileri eklendi: ID={id}, IP={ip}, Port={port}", id, ip, port);
                 
-                // COM port kontrolü - COM portları önce dene
+                // 1. Interface ID'sini EN ÖNCE dene (emulator'da COM1)
+                variants.Add(id); // COM1
+                variants.Add(id.ToUpper()); // COM1
+                variants.Add(id.ToLower()); // com1
+                
+                // 2. COM port kontrolü - COM portları ikinci sırada dene
                 if (ip.StartsWith("COM", StringComparison.OrdinalIgnoreCase))
                 {
-                    variants.Add(ip); // COM1, COM2, etc.
-                    variants.Add(ip.ToUpper()); // COM1, COM2, etc.
-                    variants.Add(ip.ToLower()); // com1, com2, etc.
-                    variants.Add($"\\\\.\\{ip}"); // \\.\COM5
+                    variants.Add(ip); // COM5
+                    variants.Add(ip.ToUpper()); // COM5
+                    variants.Add(ip.ToLower()); // com5
+                    variants.Add($"\\\\.\\{ip}"); // \\.\COM5 (XML'deki PortName)
                     variants.Add($"\\\\.\\{ip.ToUpper()}"); // \\.\COM5
                     variants.Add($"\\\\.\\{ip.ToLower()}"); // \\.\com5
+                    
+                    // 3. COM port + ID kombinasyonları
+                    variants.Add($"{id}:{ip}"); // COM1:COM5
+                    variants.Add($"{id};{ip}"); // COM1;COM5
+                    variants.Add($"{id}.{ip}"); // COM1.COM5
                 }
-                else
-                {
-                    // TCP/IP interface'ler için formatları kullan
-                    variants.Add(id);
-                    variants.Add($"{id}:{ip}:{port}");
-                    variants.Add($"{id};IP={ip};PORT={port}");
-                    variants.Add($"{ip}:{port}");
-                    variants.Add(ip);
-                    variants.Add($"TCP:{ip}:{port}");
-                    variants.Add($"LAN:{ip}:{port}");
-                    variants.Add($"ETHERNET:{ip}:{port}");
-                    variants.Add($"TCPIP;IP={ip};PORT={port}");
-                    variants.Add($"ETHERNET;IP={ip};PORT={port}");
-                }
+                
+                // 4. TCP/IP interface'ler için formatları kullan (en son)
+                variants.Add($"{id}:{ip}:{port}");
+                variants.Add($"{id};IP={ip};PORT={port}");
+                variants.Add($"{ip}:{port}");
+                variants.Add(ip);
+                variants.Add($"TCP:{ip}:{port}");
+                variants.Add($"LAN:{ip}:{port}");
+                variants.Add($"ETHERNET:{ip}:{port}");
+                variants.Add($"TCPIP;IP={ip};PORT={port}");
+                variants.Add($"ETHERNET;IP={ip};PORT={port}");
             }
 
             var variantString = string.Join(" | ", variants);

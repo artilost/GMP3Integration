@@ -4,80 +4,51 @@ using GMP3Integration.Infrastructure.Interop.Native.Enums;
 namespace GMP3Integration.Infrastructure.Interop.Native.Structs
 {
     /// <summary>
-    /// GMP3 Pairing structure
+    /// GMP3 Pairing structure (Emulator Style - No StructLayout)
     /// </summary>
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    public struct ST_GMP_PAIR
+    public class ST_GMP_PAIR
     {
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 24)]
-        public byte[] UniqueId;
-        
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
-        public byte[] PairingData;
-        
-        public int PairingDataLength;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string szProcOrderNumber;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string szProcDate;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string szProcTime;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string szExternalDeviceBrand;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string szExternalDeviceModel;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string szExternalDeviceSerialNumber;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string szEcrSerialNumber;
+
+        public ST_GMP_PAIR()
+        {
+            szProcOrderNumber = "";
+            szProcDate = "";
+            szProcTime = "";
+            szExternalDeviceBrand = "";
+            szExternalDeviceModel = "";
+            szExternalDeviceSerialNumber = "";
+            szEcrSerialNumber = "";
+        }
     }
 
     /// <summary>
-    /// GMP3 Pairing Response structure
+    /// GMP3 Pairing Response structure (Emulator Style - No StructLayout)
     /// </summary>
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    public struct ST_GMP_PAIR_RESP
+    public class ST_GMP_PAIR_RESP
     {
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 24)]
-        public byte[] UniqueId;
-        
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
-        public byte[] PairingResponse;
-        
-        public int PairingResponseLength;
-        
-        public int ErrorCode;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-        public string szEcrBrand;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-        public string szEcrModel;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-        public string szEcrSerialNumber;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public uint ErrorCode;
         public string szVersionNumber;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string szNewVersionNumber;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string szHashFirstDate;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string szHashLastDate;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string szHashExpireDate;
+
+        public ST_GMP_PAIR_RESP()
+        {
+            ErrorCode = 0;
+            szVersionNumber = "";
+            szNewVersionNumber = "";
+            szHashFirstDate = "";
+            szHashLastDate = "";
+            szHashExpireDate = "";
+        }
     }
 
     /// <summary>
@@ -313,16 +284,65 @@ namespace GMP3Integration.Infrastructure.Interop.Native.Structs
     }
 
     /// <summary>
-    /// GMP3 Echo structure
+    /// GMP3 Date structure (Emulator'dan alındı!)
     /// </summary>
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    public struct ST_ECHO
+    public struct ST_DATE
     {
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-        public string Message;
-        
-        public int ResponseCode;
-        public bool IsSuccessful;
+        public byte day;      // Day
+        public byte month;    // Month
+        public ushort year;   // Year (UInt16)
+    }
+
+    /// <summary>
+    /// GMP3 Time structure (Emulator'dan alındı!)
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct ST_TIME
+    {
+        public byte hour;     // Hour
+        public byte minute;   // Minute
+        public byte second;   // Second
+    }
+
+    /// <summary>
+    /// GMP3 Cashier structure (Emulator'dan alındı!)
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct ST_CASHIER
+    {
+        public uint cashierId;       // Cashier ID (UInt32)
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string cashierName;   // Cashier name (32 chars)
+        public byte accessLevel;     // Access level
+    }
+
+    /// <summary>
+    /// GMP3 Echo structure (Emulator Style - No StructLayout)
+    /// </summary>
+    public class ST_ECHO
+    {
+        public uint retcode;
+        public uint status;
+        public byte[] kvc;
+        public byte ecrMode;
+        public ushort mtuSize;
+        public byte[] ecrVersion;
+        public byte[] ecrNewVersion;
+        public ST_DATE date;
+        public ST_TIME time;
+        public ST_CASHIER activeCashier;
+
+        public ST_ECHO()
+        {
+            kvc = new byte[8];
+            ecrMode = 0;
+            ecrVersion = new byte[16];
+            ecrNewVersion = new byte[16];
+            activeCashier = new ST_CASHIER();
+            date = new ST_DATE();
+            time = new ST_TIME();
+        }
     }
 
     /// <summary>
