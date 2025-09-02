@@ -3,18 +3,158 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
+using System.IO;
+using Microsoft.Extensions.Logging;
 
 namespace GMP3Integration.Infrastructure.Services
 {
     internal static class InterfaceHelper
     {
+        private static ILogger _logger;
+
+        public static void SetLogger(ILogger logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        /// <summary>
+        /// XML dosyasından interface bilgilerini okur ve varyantları üretir.
+        /// </summary>
+        public static List<string> BuildVariantsFromXml()
+        {
+            var interfaces = ReadInterfacesFromXml();
+            var variants = new List<string>();
+
+            foreach (var (id, ip, port) in interfaces)
+            {
+                _logger?.LogInformation("Interface bilgileri eklendi: ID={id}, IP={ip}, Port={port}", id, ip, port);
+                
+                // COM port kontrolü - COM portları önce dene
+                if (ip.StartsWith("COM", StringComparison.OrdinalIgnoreCase))
+                {
+                    variants.Add(ip); // COM1, COM2, etc.
+                    variants.Add(ip.ToUpper()); // COM1, COM2, etc.
+                    variants.Add(ip.ToLower()); // com1, com2, etc.
+                    variants.Add($"\\\\.\\{ip}"); // \\.\COM5
+                    variants.Add($"\\\\.\\{ip.ToUpper()}"); // \\.\COM5
+                    variants.Add($"\\\\.\\{ip.ToLower()}"); // \\.\com5
+                }
+                else
+                {
+                    // TCP/IP interface'ler için formatları kullan
+                    variants.Add(id);
+                    variants.Add($"{id}:{ip}:{port}");
+                    variants.Add($"{id};IP={ip};PORT={port}");
+                    variants.Add($"{ip}:{port}");
+                    variants.Add(ip);
+                    variants.Add($"TCP:{ip}:{port}");
+                    variants.Add($"LAN:{ip}:{port}");
+                    variants.Add($"ETHERNET:{ip}:{port}");
+                    variants.Add($"TCPIP;IP={ip};PORT={port}");
+                    variants.Add($"ETHERNET;IP={ip};PORT={port}");
+                }
+            }
+
+            var variantString = string.Join(" | ", variants);
+            _logger?.LogInformation("IFACE VARIANTS ({count}): {variants}", variants.Count, variantString);
+            
+            return variants;
+        }
+
+        /// <summary>
+        /// XML dosyasından interface bilgilerini okur.
+        /// </summary>
+        private static List<(string ID, string IP, string Port)> ReadInterfacesFromXml()
+        {
+            var interfaces = new List<(string ID, string IP, string Port)>();
+            
+            try
+            {
+                var xmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "native", "win-x64", "GMP.XML");
+                _logger?.LogInformation("XML okuma başlıyor: {xmlPath}", xmlPath);
+                
+                if (!File.Exists(xmlPath))
+                {
+                    _logger?.LogWarning("XML dosyası bulunamadı: {xmlPath}", xmlPath);
+                    return interfaces;
+                }
+
+                var doc = new XmlDocument();
+                var settings = new XmlReaderSettings
+                {
+                    DtdProcessing = DtdProcessing.Ignore,
+                    CheckCharacters = false,
+                    IgnoreWhitespace = true,
+                    ValidationType = ValidationType.None
+                };
+                
+                // XML dosyasını UTF-8 olarak oku, encoding declaration'ı ignore et
+                var xmlContent = File.ReadAllText(xmlPath, Encoding.UTF8);
+                // XML declaration'ı kaldır veya UTF-8 olarak değiştir
+                xmlContent = xmlContent.Replace("encoding=\"iso-8859-9\"", "encoding=\"UTF-8\"");
+                if (xmlContent.Contains("<?xml"))
+                {
+                    var lines = xmlContent.Split('\n');
+                    if (lines[0].Contains("encoding="))
+                    {
+                        lines[0] = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>";
+                        xmlContent = string.Join("\n", lines);
+                    }
+                }
+                
+                using (var stringReader = new StringReader(xmlContent))
+                using (var reader = XmlReader.Create(stringReader, settings))
+                {
+                    doc.Load(reader);
+                }
+                _logger.LogInformation("XML dosyası yüklendi");
+
+                var interfaceNodes = doc.SelectNodes("//INTERFACE");
+                _logger.LogInformation("Interface node sayısı: {count}", interfaceNodes?.Count ?? 0);
+                
+                if (interfaceNodes != null)
+                {
+                    foreach (XmlNode node in interfaceNodes)
+                    {
+                        var id = node.Attributes?["ID"]?.Value;
+                        var ip = node.SelectSingleNode("IP")?.InnerText;
+                        var port = node.SelectSingleNode("Port")?.InnerText;
+                        var portName = node.SelectSingleNode("PortName")?.InnerText;
+                        
+                        _logger.LogInformation("Interface bulundu: ID={id}, IP={ip}, Port={port}, PortName={portName}", id, ip, port, portName);
+                        
+                        if (!string.IsNullOrEmpty(id))
+                        {
+                            // TCP/IP interface
+                            if (!string.IsNullOrEmpty(ip) && !string.IsNullOrEmpty(port))
+                            {
+                                interfaces.Add((id, ip, port));
+                                _logger.LogInformation("TCP/IP Interface bilgileri eklendi: ID={id}, IP={ip}, Port={port}", id, ip, port);
+                            }
+                            
+                            // COM interface
+                            if (!string.IsNullOrEmpty(portName) && portName.StartsWith("\\\\.\\COM"))
+                            {
+                                var comPort = portName.Replace("\\\\.\\", "");
+                                interfaces.Add((id, comPort, "0")); // COM port için port=0
+                                _logger.LogInformation("COM Interface bilgileri eklendi: ID={id}, PortName={portName}, COM={comPort}", id, portName, comPort);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "XML okuma hatası");
+            }
+            
+            return interfaces;
+        }
+
         /// <summary>
         /// Verilen iface string için olası tüm varyantları üretir.
-        /// Örn girdiler:
-        ///   "TCP:192.168.137.99:7500"
-        ///   "TCP:192.168.137.99,7500"
-        ///   "LAN:192.168.137.99:7500"
-        ///   "TCPIP:192.168.137.99:7500"
+        /// PAX A910SF için TCP/IP ve COM formatlarını destekler.
         /// </summary>
         internal static List<string> BuildVariants(string iface)
         {
@@ -24,40 +164,31 @@ namespace GMP3Integration.Infrastructure.Services
             iface = iface.Trim();
             list.Add(iface); // orijinal
 
-            // host:port yakala (TCP:IP:PORT veya TCP:IP,PORT ya da IP:PORT / IP,PORT)
+            // COM port kontrolü (COM1, COM2, etc.)
+            if (iface.StartsWith("COM", StringComparison.OrdinalIgnoreCase))
+            {
+                // COM port formatları
+                list.Add(iface.ToUpper()); // COM1, COM2, etc.
+                list.Add(iface.ToLower()); // com1, com2, etc.
+                return Dedup(list);
+            }
+
+            // TCP/IP host:port yakala
             string host; int port;
             if (!TrySplitHostPort(iface, out host, out port))
                 return Dedup(list);
 
-            // 1) TCP:IP:PORT
+            // PAX A910SF için TCP/IP formatları
+            // 1) TCP:IP:PORT (standart)
             list.Add("TCP:" + host + ":" + port);
-            // 2) TCP:IP,PORT
-            list.Add("TCP:" + host + "," + port);
-            // 3) LAN:IP:PORT
+            // 2) LAN:IP:PORT (alternatif)
             list.Add("LAN:" + host + ":" + port);
-            // 4) IP:PORT (önek yok)
+            // 3) IP:PORT (önek yok)
             list.Add(host + ":" + port);
-            // 5) IP,PORT (önek yok)
-            list.Add(host + "," + port);
-            // 6) TCPIP:IP:PORT
-
-            list.Add("TCPIP:" + host + ":" + port);
+            // 4) ETHERNET;IP=host;PORT=port (XML format)
             list.Add($"ETHERNET;IP={host};PORT={port}");
+            // 5) TCPIP;IP=host;PORT=port (alternatif XML format)
             list.Add($"TCPIP;IP={host};PORT={port}");
-            list.Add($"LAN;IP={host};PORT={port}");
-
-            list.Add($"ETHERNET:{host},{port}");
-            list.Add($"ETH:{host},{port}");
-            list.Add($"IP:{host},{port}");
-            list.Add($"TCPIP,{host},{port}");
-
-            list.Add($"{host}");
-            list.Add($"TCP:{host}");
-            list.Add($"ETHERNET:{host}");
-
-            list.Add("ETHERNET");
-            list.Add("TCPIP");
-            list.Add("LAN");
 
             return Dedup(list);
         }

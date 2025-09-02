@@ -1,4 +1,9 @@
 ﻿using GMP3Integration.Application.DTOs.DepertmenConfiguration;
+using GMP3Integration.Infrastructure.Services;
+using GMP3Integration.Infrastructure.Interop.Native.Constants;
+using GMP3Integration.Infrastructure.Interop.Native.Enums;
+using GMP3Integration.Infrastructure.Interop.Native.Structs;
+using GMP3Integration.Infrastructure.Interop.Native.PInvoke;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,361 +14,212 @@ using System.Threading.Tasks;
 
 namespace GMP3Integration.Infrastructure.Interop
 {
+    /// <summary>
+    /// GMP3 Native Methods - Wrapper class for all native DLL interactions
+    /// This class provides high-level wrapper methods around the native P/Invoke calls
+    /// </summary>
     internal class Gmp3NativeMethods
     {
-        // === RETCODES ===
-        public const int TRAN_RESULT_OK = 0x0000;
-        public const int DLL_RETCODE_INVALID_INTERFACE = unchecked((int)0xF034);
-        public const int DLL_RETCODE_UNKNOWN_ECHO = unchecked((int)0xF035);
-        public const int DLL_RETCODE_PAIRING_REQUIRED = unchecked((int)0xF020);
-        public const int DLL_RETCODE_PORT_NOT_OPEN = unchecked((int)0xF000);
+        // === RETCODES === (Legacy compatibility - now using Gmp3Constants)
+        public const int TRAN_RESULT_OK = Gmp3Constants.TRAN_RESULT_OK;
+        public const int DLL_RETCODE_INVALID_INTERFACE = Gmp3Constants.DLL_RETCODE_INVALID_INTERFACE_FORMAT;
+        public const int DLL_RETCODE_HANDSHAKE = Gmp3Constants.DLL_RETCODE_HANDSHAKE;
+        public const int DLL_RETCODE_PAIRING_REQUIRED = Gmp3Constants.DLL_RETCODE_PAIRING_REQUIRED;
+        public const int DLL_RETCODE_PORT_NOT_OPEN = Gmp3Constants.DLL_RETCODE_PORT_NOT_OPEN;
+        public const int DLL_RETCODE_JSON_INVALID_INTERFACE = Gmp3Constants.DLL_RETCODE_JSON_INVALID_INTERFACE;
+        public const int DLL_RETCODE_JSON_FUNCTION_ERROR = Gmp3Constants.DLL_RETCODE_JSON_FUNCTION_ERROR;
+        public const int DLL_RETCODE_CREATE_INTERFACE_SUCCESS = Gmp3Constants.DLL_RETCODE_CREATE_INTERFACE_SUCCESS;
+        public const int DLL_RETCODE_INTERFACE_NOT_SUPPORTED = Gmp3Constants.DLL_RETCODE_INTERFACE_NOT_SUPPORTED;
+        public const int APP_ERR_ALREADY_DONE = Gmp3Constants.APP_ERR_ALREADY_DONE;
+        
+        // Additional legacy constants
+        public const int DLL_RETCODE_FUNC_NOT_FOUND = unchecked((int)0xF0FE);
         public const int DLL_RETCODE_TIMEOUT = unchecked((int)0xF00B);
         public const int DLL_RETCODE_ACK_NOT_RECEIVED = unchecked((int)0xF00A);
         public const int DLL_RETCODE_RECV_BUSY = unchecked((int)0xF00E);
-        public const int DLL_RETCODE_FUNC_NOT_FOUND = unchecked((int)0xF0FE);
-        public const int DLL_RETCODE_HANDSHAKE = 0xF035;
 
-        public const int APP_ERR_ALREADY_DONE = 2080;
-        public const int APP_ERR_GMP3_INVALID_HANDLE = 2317;
-        public const int APP_ERR_CASHIER_ENTRY_REQUIRED = 2053;
-        public const int APP_ERR_GMP3_NO_HANDLE = 2341;
-        public const int APP_ERR_GMP3_APP_CHECKSUM_MISMATCH = 2338;
-
-
-        // ===================== 64-bit Unicode StdCall =====================
-        // (Opsiyonel) bazı yerlerde referansım varsa kalsın; çağırmıyoruz.
-        [DllImport("GMPSmartDLL", EntryPoint = "FP3_Close",
-            CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall, ExactSpelling = true)]
-        internal static extern ushort FP3_Close(int handle);
-
-        // --- Aşağıdakiler daha önce projede vardı (scan/uyumluluk için) ---
-        // Kullanılmıyorlar ama geri ekliyoruz ki eski yapı birebir geri gelsin.
-
-        internal static class Iface_AnsiCdecl_x86
-        {
-            [DllImport("GMPSmartDLL", EntryPoint = "FP3_InterfaceClose",
-                CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-            internal static extern ushort InterfaceClose(int ifaceHandle);
-
-            [DllImport("GMPSmartDLL", EntryPoint = "FP3_INTERFACE_CLOSE",
-                CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-            internal static extern ushort INTERFACE_CLOSE(int ifaceHandle);
-
-            [DllImport("GMPSmartDLL", EntryPoint = "FP3_Close",
-                CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-            internal static extern ushort Close(int handle);
-        }
-
-
+        // === LEGACY COMPATIBILITY ===
+        // These are kept for backward compatibility with existing code
         internal static class Iface_AnsiCdecl_x64
         {
+            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_CreateInterface")]
+            internal static extern int CreateInterface(string currentInterface);
 
-            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_Echo",
-                CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, ExactSpelling = true)]
+            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_Close")]
+            internal static extern int Close(string currentInterface, int timeoutMs);
+
+            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_Echo", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, ExactSpelling = true)]
             internal static extern int Echo(string iface);
-
-            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_ECHO",
-                CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, ExactSpelling = true)]
-            internal static extern int ECHO(string iface);
         }
 
         internal static class Iface_AnsiStd_x64
         {
+            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall, EntryPoint = "FP3_CreateInterface")]
+            internal static extern int CreateInterface(string currentInterface);
 
-            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_Echo",
-                CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, ExactSpelling = true)]
+            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall, EntryPoint = "FP3_Close")]
+            internal static extern int Close(string currentInterface, int timeoutMs);
+
+            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_Echo", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, ExactSpelling = true)]
             internal static extern int Echo(string iface);
-
-            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_ECHO",
-                CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, ExactSpelling = true)]
-            internal static extern int ECHO(string iface);
         }
 
         internal static class Iface_UniStd_x64
         {
+            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall, EntryPoint = "FP3_CreateInterface")]
+            internal static extern int CreateInterface(string currentInterface);
 
-            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_Ping", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Winapi, SetLastError = true)]
-            internal static extern int FP3_Ping([MarshalAs(UnmanagedType.LPWStr)] string iface);
-
-            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_StartPairingApprove", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall)]
-            internal static extern int StartPairingApprove(string iface, int timeoutMs);
-
-            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_PAIRING_APPROVE", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall)]
-            internal static extern int PAIRING_APPROVE(string iface, int timeoutMs);
-
-            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_PAIRING_FINALIZE", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall)]
-            internal static extern int PAIRING_FINALIZE(string iface, int timeoutMs);
-
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall, EntryPoint = "FP3_InterfaceClose")]
-            internal static extern int InterfaceClose(string currentInterface, int timeoutMs);
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall, EntryPoint = "FP3_INTERFACE_CLOSE")]
-            internal static extern int INTERFACE_CLOSE(string currentInterface, int timeoutMs);
             [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall, EntryPoint = "FP3_Close")]
             internal static extern int Close(string currentInterface, int timeoutMs);
 
-
-            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_Echo",
-                CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode, ExactSpelling = true)]
+            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_Echo", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode, ExactSpelling = true)]
             internal static extern int Echo(string iface);
-
-            [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_ECHO",
-                CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode, ExactSpelling = true)]
-            internal static extern int ECHO(string iface);
         }
 
-
-        private static class UniStd_x64
+        // JSON Methods for backward compatibility
+        internal static class JsonGmp3Methods
         {
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall)]
-            internal static extern int FP3_Echo(string currentInterface, int timeoutMs);
+            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall, EntryPoint = "JsonGmp3Methods_FP3_CreateInterface")]
+            internal static extern int CreateInterface_All(string iface);
 
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall)]
-            internal static extern int FP3_Ping(string currentInterface, int timeoutMs);
+            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall, EntryPoint = "JsonGmp3Methods_FP3_StartPairingInit")]
+            internal static extern int StartPairingInit(string iface, string jsonRequest, ref string jsonResponse, int timeout);
 
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall)]
-            internal static extern int FP3_Busy(string currentInterface, out byte isBusy, int timeoutMs);
-
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall)]
-            internal static extern int FP3_Start(string currentInterface, ref ulong tranHandle, byte[] uniqueId, int timeoutMs);
-
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall)]
-            internal static extern int FP3_GetTicket(string currentInterface, ulong tranHandle, IntPtr pTicket, int timeoutMs);
+            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall, EntryPoint = "JsonGmp3Methods_FP3_Echo")]
+            internal static extern int Echo(string iface, string jsonRequest, ref string jsonResponse, int timeout);
         }
 
-        // ===================== 64-bit Unicode Cdecl =====================
-        private static class UniCdecl_x64
+        // === WRAPPER METHODS ===
+
+        /// <summary>
+        /// Wrapper for FP3_Start with fallback to legacy methods
+        /// </summary>
+        internal static int FP3_Start(string iface, ref ulong tranHandle, byte[] uniqueId, int timeout)
         {
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-            internal static extern int FP3_Echo(string currentInterface, int timeoutMs);
-
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_ECHO")]
-            internal static extern int FP3_ECHO(string currentInterface, int timeoutMs);
-
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-            internal static extern int FP3_Ping(string currentInterface, int timeoutMs);
-
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-            internal static extern int FP3_Busy(string currentInterface, out byte isBusy, int timeoutMs);
-
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-            internal static extern int FP3_Start(string currentInterface, ref ulong tranHandle, byte[] uniqueId, int timeoutMs);
-
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-            internal static extern int FP3_GetTicket(string currentInterface, ulong tranHandle, IntPtr pTicket, int timeoutMs);
-        }     
-
-        // ===================== Pairing (çeşitli entrypoint isimleri) =====================
-        private static class Pairing_UniStd_x64
-        {
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall, EntryPoint = "FP3_StartPairingInit")]
-            internal static extern int StartPairingInit(string currentInterface, int timeoutMs);
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall, EntryPoint = "FP3_PairingInit")]
-            internal static extern int PairingInit(string currentInterface, int timeoutMs);
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall, EntryPoint = "FP3_PAIRING_INIT")]
-            internal static extern int PAIRING_INIT(string currentInterface, int timeoutMs);
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall, EntryPoint = "FP3_StartPairing")]
-            internal static extern int StartPairing(string currentInterface, int timeoutMs);
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall, EntryPoint = "FP3_PairingStart")]
-            internal static extern int PairingStart(string currentInterface, int timeoutMs);
-        }
-        private static class Pairing_UniCdecl_x64
-        {
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_StartPairingInit")]
-            internal static extern int StartPairingInit(string currentInterface, int timeoutMs);
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_PairingInit")]
-            internal static extern int PairingInit(string currentInterface, int timeoutMs);
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_PAIRING_INIT")]
-            internal static extern int PAIRING_INIT(string currentInterface, int timeoutMs);
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_StartPairing")]
-            internal static extern int StartPairing(string currentInterface, int timeoutMs);
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_PairingStart")]
-            internal static extern int PairingStart(string currentInterface, int timeoutMs);
+            try { return Gmp3TransactionMethods.FP3_Start(iface, ref tranHandle, uniqueId, timeout); } catch { }
+            return DLL_RETCODE_INVALID_INTERFACE;
         }
 
-        // ===================== Interface Open/Close (çeşitli isimler) =====================
-        
-        
-        private static class Iface_UniCdecl_x64
+        /// <summary>
+        /// Wrapper for FP3_Close with fallback to legacy methods
+        /// </summary>
+        internal static int FP3_Close(string iface, ulong tranHandle, int timeout)
         {
-            [DllImport("GMPSmartDLL", EntryPoint = "FP3_StartPairingApprove", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-            internal static extern int StartPairingApprove(string iface, int to);
-
-
-            [DllImport("GMPSmartDLL", EntryPoint = "FP3_PAIRING_APPROVE", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-            internal static extern int PAIRING_APPROVE(string iface, int to);
-
-
-            [DllImport("GMPSmartDLL", EntryPoint = "FP3_StartPairingFinalize", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-            internal static extern int StartPairingFinalize(string iface, int to);
-
-
-            [DllImport("GMPSmartDLL", EntryPoint = "FP3_PAIRING_FINALIZE", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-            internal static extern int PAIRING_FINALIZE(string iface, int to);
-
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_INTERFACE_OPEN")]
-            internal static extern int INTERFACE_OPEN(string currentInterface, int timeoutMs);
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_Open")]
-            internal static extern int Open(string currentInterface, int timeoutMs);
-
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_InterfaceClose")]
-            internal static extern int InterfaceClose(string currentInterface, int timeoutMs);
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_INTERFACE_CLOSE")]
-            internal static extern int INTERFACE_CLOSE(string currentInterface, int timeoutMs);
-            [DllImport("GMPSmartDLL.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl, EntryPoint = "FP3_Close")]
-            internal static extern int Close(string currentInterface, int timeoutMs);
+            try { return Gmp3TransactionMethods.FP3_Close(iface, tranHandle, timeout); } catch { }
+            return DLL_RETCODE_INVALID_INTERFACE;
         }
 
-
-
-        // ===================== SARMALAYICI METOTLAR =====================
-
-
-        internal static int Echo(string iface, int to)
+        /// <summary>
+        /// Wrapper for FP3_Close without transaction handle (legacy)
+        /// </summary>
+        internal static int FP3_Close(string iface, int timeout)
         {
-            // 1) Eski çalışan yol: ANSI + StdCall (logda "Echo_Ansi_Std" diye gördüğümüz)
-            try { return Iface_AnsiStd_x64.Echo(iface); } catch { }
-            try { return Iface_AnsiStd_x64.ECHO(iface); } catch { }
-
-            // 2) Alternatif: ANSI + Cdecl
-            try { return Iface_AnsiCdecl_x64.Echo(iface); } catch { }
-            try { return Iface_AnsiCdecl_x64.ECHO(iface); } catch { }
-
-            // 3) En sona Unicode imzaları (timeout alanlar)
-            try { return UniStd_x64.FP3_Echo(iface, to); } catch { }
-            try { return UniCdecl_x64.FP3_Echo(iface, to); } catch { }
-            try { return UniCdecl_x64.FP3_ECHO(iface, to); } catch { }
-
-            return DLL_RETCODE_PORT_NOT_OPEN;
+            try { return Gmp3TransactionMethods.FP3_Close(iface, 0, timeout); } catch { }
+            return DLL_RETCODE_INVALID_INTERFACE;
         }
 
-        internal static int Ping(string iface, int to)
+        /// <summary>
+        /// Wrapper for CreateInterface with fallback to legacy methods
+        /// </summary>
+        internal static int CreateInterface(string iface, int timeout)
         {
-            try { return UniStd_x64.FP3_Ping(iface, to); } catch { }
-            try { return UniCdecl_x64.FP3_Ping(iface, to); } catch { }
-            return DLL_RETCODE_PORT_NOT_OPEN;
+            try { return Gmp3InterfaceMethods.CreateInterface(iface); } catch { }
+            return DLL_RETCODE_INVALID_INTERFACE;
         }
 
-        internal static int Busy(string iface, out byte busy, int to)
+        /// <summary>
+        /// Wrapper for Close with fallback to legacy methods
+        /// </summary>
+        internal static int Close(string iface, int timeout)
         {
-            busy = 1;
-            try { return UniStd_x64.FP3_Busy(iface, out busy, to); } catch { }
-            try { return UniCdecl_x64.FP3_Busy(iface, out busy, to); } catch { }
-            return DLL_RETCODE_PORT_NOT_OPEN;
+            try { return Gmp3InterfaceMethods.Close(iface, timeout); } catch { }
+            return DLL_RETCODE_INVALID_INTERFACE;
         }
 
-        internal static int Start(string iface, ref ulong h, byte[] unique16, int to)
+        /// <summary>
+        /// Wrapper for Echo with fallback to legacy methods
+        /// </summary>
+        internal static int Echo(string iface, int timeout)
         {
-            try { ulong t = 0; var rc = UniStd_x64.FP3_Start(iface, ref t, unique16, to); if (rc == TRAN_RESULT_OK || rc > 0) { h = t; return rc; } } catch { }
-            try { ulong t = 0; var rc = UniCdecl_x64.FP3_Start(iface, ref t, unique16, to); if (rc == TRAN_RESULT_OK || rc > 0) { h = t; return rc; } } catch { }
-            return DLL_RETCODE_PORT_NOT_OPEN;
+            try { return Gmp3InterfaceMethods.Echo(iface); } catch { }
+            return DLL_RETCODE_INVALID_INTERFACE;
         }
 
-        public static int StartPairingApprove_All(string iface, int to)
+        /// <summary>
+        /// Wrapper for StartPairingInit with fallback to legacy methods
+        /// </summary>
+        internal static int StartPairingInit(string iface, ref Native.Structs.ST_GMP_PAIR pairing, int timeout)
         {
-            try { return Iface_UniStd_x64.StartPairingApprove(iface, to); } catch { }
-            try { return Iface_UniStd_x64.PAIRING_APPROVE(iface, to); } catch { }
-            return DLL_RETCODE_PAIRING_REQUIRED; // 0xF020
+            try { return Gmp3InterfaceMethods.StartPairingInit(iface, ref pairing, timeout); } catch { }
+            return DLL_RETCODE_INVALID_INTERFACE;
         }
 
-        internal static int StartPairingInit_All(string iface, int to)
+        /// <summary>
+        /// Wrapper for StartPairingInitWithPairing_All with fallback to legacy methods
+        /// </summary>
+        internal static int StartPairingInitWithPairing_All(string iface, ref Native.Structs.ST_GMP_PAIR pairing, ref Native.Structs.ST_GMP_PAIR_RESP pairingResp, int timeout)
         {
-            try { return Pairing_UniStd_x64.StartPairingInit(iface, to); } catch { }
-            try { return Pairing_UniStd_x64.PairingInit(iface, to); } catch { }
-            try { return Pairing_UniStd_x64.PAIRING_INIT(iface, to); } catch { }
-            try { return Pairing_UniStd_x64.StartPairing(iface, to); } catch { }
-            try { return Pairing_UniStd_x64.PairingStart(iface, to); } catch { }
-
-            try { return Pairing_UniCdecl_x64.StartPairingInit(iface, to); } catch { }
-            try { return Pairing_UniCdecl_x64.PairingInit(iface, to); } catch { }
-            try { return Pairing_UniCdecl_x64.PAIRING_INIT(iface, to); } catch { }
-            try { return Pairing_UniCdecl_x64.StartPairing(iface, to); } catch { }
-            try { return Pairing_UniCdecl_x64.PairingStart(iface, to); } catch { }
-
-            return DLL_RETCODE_PAIRING_REQUIRED;
+            try { return Gmp3InterfaceMethods.StartPairingInitWithPairing_All(iface, ref pairing, ref pairingResp, timeout); } catch { }
+            return DLL_RETCODE_INVALID_INTERFACE;
         }
 
-        internal static int InterfaceOpen_All(string iface, int to)
+        /// <summary>
+        /// Wrapper for StartPairingInit_All with fallback to legacy methods
+        /// </summary>
+        internal static int StartPairingInit_All(string iface, ref Native.Structs.ST_GMP_PAIR pairing, int timeout)
         {
-            // şu an açık bir Open export'u yoksa port-not-open döndür
-            return DLL_RETCODE_PORT_NOT_OPEN;
+            try { return Gmp3InterfaceMethods.StartPairingInit_All(iface, ref pairing, timeout); } catch { }
+            return DLL_RETCODE_INVALID_INTERFACE;
         }
 
-        internal static int InterfaceClose_All(string iface, int to)
+        /// <summary>
+        /// Wrapper for Ping with fallback to legacy methods
+        /// </summary>
+        internal static int Ping(string iface, int timeout)
         {
-            try { return Iface_UniStd_x64.InterfaceClose(iface, to); } catch { }
-            try { return Iface_UniStd_x64.INTERFACE_CLOSE(iface, to); } catch { }
-            try { return Iface_UniStd_x64.Close(iface, to); } catch { }
-            return DLL_RETCODE_UNKNOWN_ECHO;
+            try { return Gmp3InterfaceMethods.Ping(iface); } catch { }
+            return DLL_RETCODE_INVALID_INTERFACE;
         }
 
-        internal static int GetTicketShallow(string iface, ulong h, int to)
+        /// <summary>
+        /// Legacy CreateInterface method without timeout for backward compatibility
+        /// </summary>
+        internal static int CreateInterface(string iface)
         {
-            try { return UniStd_x64.FP3_GetTicket(iface, h, IntPtr.Zero, to); } catch { }
-            try { return UniCdecl_x64.FP3_GetTicket(iface, h, IntPtr.Zero, to); } catch { }
-            return APP_ERR_GMP3_NO_HANDLE;
+            return CreateInterface(iface, Gmp3Constants.DEFAULT_TIMEOUT);
         }
 
-        //---------------------------------------------------------------------------------
-        internal static int FP3_SetDepartments_Native(
-            ulong transactionHandle,
-            DepartmentConfigItem[] departments,
-            int count)
+        /// <summary>
+        /// Legacy Echo method without timeout for backward compatibility
+        /// </summary>
+        internal static int Echo(string iface)
         {
-           
-            throw new NotImplementedException("FP3_SetDepartments native method not integrated yet.");
+            return Echo(iface, Gmp3Constants.DEFAULT_TIMEOUT);
         }
 
-        internal static int FP3_OptionFlags_Native(ulong transactionHandle, int activeFlags, int flagsToBeSet)
+        /// <summary>
+        /// Test if DLL is working properly
+        /// </summary>
+        internal static int TestDll()
         {
-            // stub: ■ henüz implementasyon yok
-            throw new NotImplementedException("FP3_OptionFlags native method not integrated yet.");
+            try
+            {
+                // Try to call a simple function to test DLL loading
+                // Use a simple interface string that should work
+                var result = Gmp3InterfaceMethods.CreateInterface("TCPIP");
+                
+                // 0xF02A (61482) is actually CREATE_INTERFACE_SUCCESS, not an error
+                if (result == DLL_RETCODE_CREATE_INTERFACE_SUCCESS || result == TRAN_RESULT_OK)
+                {
+                    return TRAN_RESULT_OK; // DLL is working
+                }
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return DLL_RETCODE_FUNC_NOT_FOUND;
+            }
         }
-        internal static int FP3_TicketHeader_Native(ulong transactionHandle, int ticketType)
-        {
-            throw new NotImplementedException("FP3_TicketHeader native method not integrated yet.");
-        }
-       
-        internal static int FP3_PrintTotalsAndPayments_Native(ulong transactionHandle)
-        {
-            throw new NotImplementedException("FP3_PrintTotalsAndPayments native method not integrated yet.");
-        }
-        internal static int FP3_PrintBeforeMF_Native(ulong transactionHandle)
-        {
-            throw new NotImplementedException("FP3_PrintBeforeMF native method not integrated yet.");
-        }
-        internal static int FP3_PrintMF_Native(ulong transactionHandle)
-        {
-            throw new NotImplementedException("FP3_PrintMF native method not integrated yet.");
-        }/*
-        internal static int FP3_Close_Native(ulong transactionHandle)
-        {
-            throw new NotImplementedException("FP3_Close native method not integrated yet.");
-        }*/
-        internal static int FP3_Refund_Native(ulong transactionHandle, decimal amount)
-        {
-            throw new NotImplementedException("FP3_Refund native method not integrated yet.");
-        }
-        internal static int FP3_PrintMessage_Native(ulong transactionHandle, string messageText)
-        {
-            throw new NotImplementedException("FP3_PrintMessage native method not integrated yet.");
-        }
-        internal static int FP3_ItemSale_Native(
-            ulong transactionHandle, int type, int subType, int deptIndex, int amount, int currencyCode,
-            int count, int unitType, string itemCode, string name, string barcode, int flag)
-        { throw new NotImplementedException(); }
-
-        internal static int FP3_Payment_Native(
-            ulong transactionHandle, string typeOfPayment, string subtypeOfPayment,
-            int payAmount, int payAmountCurrencyCode, string bankPaymentUniqueId)
-        { throw new NotImplementedException(); }
-
-        internal static int FP3_CancelTransaction_Native(ulong transactionHandle)
-        {
-            // DLL gelince DllImport ile bağlanacak
-            throw new System.NotImplementedException("FP3_CancelTransaction not integrated yet.");
-        }
-
-        
-
     }
 }

@@ -30,8 +30,12 @@ builder.Host.UseSerilog(); // ← default logger yerine Serilog
 
 //builder.Services.AddScoped<Gmp3InteropService>();
 
-builder.Services.AddScoped<GMP3Integration.Application.Interfaces.IGmp3Link,GMP3Integration.Infrastructure.Services.Gmp3Link>();
-builder.Services.AddScoped<IGmp3Service, Gmp3InteropService>();
+
+
+// Core GMP3 service registration
+builder.Services.AddScoped<Gmp3InteropService>();
+
+// Decorator pattern: ResilientGmp3Service wraps Gmp3InteropService
 builder.Services.AddScoped<IGmp3Service>(sp =>
 {
     var inner = sp.GetRequiredService<Gmp3InteropService>();
@@ -81,11 +85,12 @@ builder.Services
 
 
 //  DI registrations
-// Uygulama katmanındaki arayüzü, Infrastructure’daki implementasyonla eşle
+// Uygulama katmanındaki arayüzü, Infrastructure'daki implementasyonla eşle
 
 builder.Services.AddScoped<TransactionHandleScopeFilter>(); 
 
-builder.Services.AddTransient<IGmp3Service, Gmp3InteropService>();
+// Bu satırı kaldır - yukarıda zaten ResilientGmp3Service var
+// builder.Services.AddTransient<IGmp3Service, Gmp3InteropService>();
 
 builder.Services.AddTransient<ITransactionWorkflowService, TransactionWorkflowService>();
 

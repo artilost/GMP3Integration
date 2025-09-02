@@ -171,7 +171,7 @@
     <Compile Include="Features\Queries\GetTaxRates\GetTaxRatesHandler.cs" />
     <Compile Include="Features\Queries\GetTaxRates\GetTaxRatesQuery.cs" />
     <Compile Include="Interfaces\IGmp3InteropService.cs" />
-    <Compile Include="Interfaces\IGmp3Link.cs" />
+
     <Compile Include="Interfaces\IGmp3Service.cs" />
     <Compile Include="Interfaces\ITransactionWorkflowService.cs" />
     <Compile Include="Options\Gmp3Options.cs" />

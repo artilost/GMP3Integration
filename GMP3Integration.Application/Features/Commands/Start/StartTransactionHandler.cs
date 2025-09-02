@@ -9,8 +9,6 @@ using System.Threading.Tasks;
 
 namespace GMP3Integration.Application.Features.Commands.Start
 {
-    // Application, Infrastructure'a referans ALMAZ.
-    // Pairing/Echo/Start mantığının tamamı IGmp3Service içinde (Infrastructure) tutulur.
     public sealed class StartTransactionHandler : IRequestHandler<StartTransactionCommand, StartTransactionResponse>
     {
         private readonly IGmp3Service _gmp3;
@@ -26,7 +24,6 @@ namespace GMP3Integration.Application.Features.Commands.Start
              ? _cfg["Gmp3:CurrentInterface"]
              : request.CurrentInterface.Trim();
 
-            // Eski davranış gibi: asla throw etme; servise pasla.
             var resp = await _gmp3.StartTransactionAsync(new StartTransactionRequest { CurrentInterface = iface });
             return resp; 
         }
