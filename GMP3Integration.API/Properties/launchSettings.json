@@ -9,6 +9,15 @@
     }
   },
   "profiles": {
+    "GMP3Integration.API": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "applicationUrl": "http://localhost:5173",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true"
+      }
+    },
     "http": {
       "commandName": "Project",
       "dotnetRunMessages": true,
@@ -27,5 +36,5 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     }
-  }
+  }  
 }

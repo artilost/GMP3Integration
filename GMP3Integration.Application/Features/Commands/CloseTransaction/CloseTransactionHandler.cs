@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-
+/*
 namespace GMP3Integration.Application.Features.Commands.CloseTransaction
 {
     public class CloseTransactionHandler : IRequestHandler<CloseTransactionCommand, CloseTransactionResponse>
@@ -23,3 +23,4 @@ namespace GMP3Integration.Application.Features.Commands.CloseTransaction
         }
     }
 }
+*/

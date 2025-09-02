@@ -8,6 +8,7 @@ namespace GMP3Integration.Application.DTOs.CanselTransaction
 {
     public class CancelTransactionRequest
     {
-        public ulong TransactionHandle { get; set; }
+        public long TransactionHandle { get; set; }
+        public string Reason { get; set; }
     }
 }

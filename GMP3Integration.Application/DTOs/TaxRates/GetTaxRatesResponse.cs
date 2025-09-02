@@ -8,6 +8,7 @@ namespace GMP3Integration.Application.DTOs.TaxRates
 {
     public class GetTaxRatesResponse
     {
+        public bool Success { get; set; }
         public List<TaxRateDto> Rates { get; set; } = new List<TaxRateDto>();
     }
 }

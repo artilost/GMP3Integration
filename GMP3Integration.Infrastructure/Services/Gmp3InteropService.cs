@@ -1,190 +1,281 @@
 ﻿using GMP3Integration.Application.DTOs;
-using GMP3Integration.Application.DTOs.CancelTansaction;
-using GMP3Integration.Application.DTOs.CanselTransaction;
-using GMP3Integration.Application.DTOs.CloseTransaction;
-using GMP3Integration.Application.DTOs.DepertmenConfiguration;
-using GMP3Integration.Application.DTOs.ItemSale;
 using GMP3Integration.Application.DTOs.OptionFlags;
-using GMP3Integration.Application.DTOs.Payment;
-using GMP3Integration.Application.DTOs.PrintBeforeMf;
-using GMP3Integration.Application.DTOs.PrintMessage;
-using GMP3Integration.Application.DTOs.PrintMf;
-using GMP3Integration.Application.DTOs.PrintTotalsAndPayments;
-using GMP3Integration.Application.DTOs.Refund;
-using GMP3Integration.Application.DTOs.TaxRates;
 using GMP3Integration.Application.DTOs.TicketHeader;
+using GMP3Integration.Application.DTOs.ItemSale;
+using GMP3Integration.Application.DTOs.Payment;
+using GMP3Integration.Application.DTOs.PrintTotalsAndPayments;
+using GMP3Integration.Application.DTOs.PrintBeforeMf;
+using GMP3Integration.Application.DTOs.PrintMf;
+using GMP3Integration.Application.DTOs.Refund;
+using GMP3Integration.Application.DTOs.PrintMessage;
+using GMP3Integration.Application.DTOs.TaxRates;
+using GMP3Integration.Application.DTOs.DepertmenConfiguration;
+using GMP3Integration.Application.DTOs.ForceReset;
 using GMP3Integration.Application.Interfaces;
 using GMP3Integration.Infrastructure.Interop;
+using GMP3Integration.Infrastructure.Services.Pairing;
+using GMP3Integration.Infrastructure.Services.Connection;
+using GMP3Integration.Infrastructure.Interop.Native.Structs;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace GMP3Integration.Infrastructure.Services
 {
     public class Gmp3InteropService : IGmp3Service
     {
-        Task<StartTransactionResponse> IGmp3Service.StartTransactionAsync(StartTransactionRequest request)
+        private readonly ILogger<Gmp3InteropService> _log;
+
+        private readonly string _xmlPath;
+        private readonly Gmp3PairingService _pairingService;
+        private readonly Gmp3ConnectionService _connectionService;
+
+        public Gmp3InteropService(ILogger<Gmp3InteropService> log)
         {
-            // Native stub çağrısı
-            var result = new StartTransactionResponse();
+            _log = log;
+            _xmlPath = "GMP.XML";
+            
+            // InterfaceHelper'a logger'ı set et
+            InterfaceHelper.SetLogger(_log);
+            
+            // Service'leri oluştur
+            _pairingService = new Gmp3PairingService(_log);
+            _connectionService = new Gmp3ConnectionService(_log);
+        }
+
+        public async Task<StartTransactionResponse> StartTransactionAsync(StartTransactionRequest request)
+        {
+            _log.LogInformation("🚀 StartTransaction başlatılıyor...");
+            
+            // Test DLL first
+            var dllTest = Gmp3NativeMethods.TestDll();
+            _log.LogInformation("DLL Test Result: {dllTest}", dllTest);
+            
             try
             {
-
-                Gmp3NativeMethods.FP3_Start_Native(request.CurrentInterface, out var handle);
-                result.TransactionHandle = handle;
-                return Task.FromResult(result);
+                // XML'den interface varyantlarını al
+                var variants = InterfaceHelper.BuildVariantsFromXml();
+                
+                foreach (var ifaceInput in variants)
+                {
+                    _log.LogInformation("🔍 Interface deneniyor: {iface}", ifaceInput);
+                    
+                    // Emulator style: Handle yok, sadece string!
+                    var rc = Gmp3NativeMethods.CreateInterface(ifaceInput);
+                    _log.LogInformation("CreateInterface({iface}) rc=0x{rc:X}", ifaceInput, rc);
+                    
+                if (rc == Gmp3NativeMethods.DLL_RETCODE_INVALID_INTERFACE)
+                {
+                        _log.LogWarning("❌ INVALID_INTERFACE - Sonraki varyant deneniyor");
+                    continue;
+                }
+                    if (rc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                    {
+                        _log.LogWarning("❌ HANDSHAKE - Sonraki varyant deneniyor");
+                    continue;
+                }
+                    if (rc == Gmp3NativeMethods.DLL_RETCODE_CREATE_INTERFACE_SUCCESS || rc == Gmp3NativeMethods.TRAN_RESULT_OK)
+                    {
+                        _log.LogWarning("⚠️ CREATE_INTERFACE_SUCCESS (0xF02A) - Interface oluşturuldu mu? Test ediliyor...");
+                    }
+                    
+                    if (rc == Gmp3NativeMethods.DLL_RETCODE_FUNC_NOT_FOUND)
+                    {
+                        _log.LogWarning("❌ JSON fonksiyonu bulunamadı - Klasik yöntem deneniyor");
+                        // JSON fonksiyonu yoksa klasik yöntemi dene
+                        rc = Gmp3NativeMethods.CreateInterface(ifaceInput);
+                        _log.LogInformation("Klasik CreateInterface({iface}) rc=0x{rc:X}", ifaceInput, rc);
+                        
+                        if (rc == Gmp3NativeMethods.DLL_RETCODE_INVALID_INTERFACE)
+                        {
+                            continue;
+                        }
+                    }
+                    
+                    // Emülatör gibi: CreateInterface başarılıysa emülatör sırasını uygula
+                    if (rc == Gmp3NativeMethods.TRAN_RESULT_OK || rc == Gmp3NativeMethods.DLL_RETCODE_CREATE_INTERFACE_SUCCESS)
+                    {
+                        _log.LogInformation("✅ CreateInterface başarılı: {iface}", ifaceInput);
+                        
+                        // EMÜLATÖR SIRASI: Echo → Pairing → Departments → Currency → Start
+                        
+                        // 1. FP3_Echo (Handshake) - String-based!
+                        _log.LogInformation("🔧 1. FP3_Echo (Handshake) deneniyor...");
+                        
+                        // TEST: Önce basit Echo method'unu dene (string ile)
+                        _log.LogInformation("🧪 TEST: Basit Echo method'u deneniyor (string ile)...");
+                        var echoSimpleRc = Gmp3NativeMethods.EchoSimple(ifaceInput);
+                        _log.LogInformation("EchoSimple({iface}) rc=0x{rc:X}", ifaceInput, echoSimpleRc);
+                        
+                        // TEST: Alternatif Echo method'u dene (string + timeout ile)
+                        _log.LogInformation("🧪 TEST: Alternatif Echo method'u deneniyor (string + timeout ile)...");
+                        var echoTimeoutRc = Gmp3NativeMethods.EchoWithTimeout(ifaceInput, 10000);
+                        _log.LogInformation("EchoWithTimeout({iface}) rc=0x{rc:X}", ifaceInput, echoTimeoutRc);
+                        
+                        // TEST: Farklı function isimleri dene!
+                        _log.LogInformation("🧪 TEST: Farklı function isimleri deneniyor...");
+                        var echoBasicRc = Gmp3NativeMethods.EchoBasic(ifaceInput);
+                        _log.LogInformation("EchoBasic({iface}) rc=0x{rc:X}", ifaceInput, echoBasicRc);
+                        
+                        var echoGmp3Rc = Gmp3NativeMethods.EchoGmp3(ifaceInput);
+                        _log.LogInformation("EchoGmp3({iface}) rc=0x{rc:X}", ifaceInput, echoGmp3Rc);
+                        
+                        var echoTestRc = Gmp3NativeMethods.EchoTest(ifaceInput);
+                        _log.LogInformation("EchoTest({iface}) rc=0x{rc:X}", ifaceInput, echoTestRc);
+                        
+                        // Orijinal Echo method'u (string ile) - Emulator'dan alındı!
+                        _log.LogInformation("🔧 Orijinal Echo method'u deneniyor (string ile)...");
+                        var echo = new ST_ECHO();
+                        var echoRc = Gmp3NativeMethods.Echo(ifaceInput, ref echo, 10000);  // String!
+                        _log.LogInformation("FP3_Echo({iface}) rc=0x{rc:X}", ifaceInput, echoRc);
+                        
+                        // Echo test sonuçlarını kontrol et
+                        _log.LogInformation("📊 Echo Test Sonuçları:");
+                        _log.LogInformation("  - EchoSimple: 0x{rc:X}", echoSimpleRc);
+                        _log.LogInformation("  - EchoWithTimeout: 0x{rc:X}", echoTimeoutRc);
+                        _log.LogInformation("  - EchoBasic: 0x{rc:X}", echoBasicRc);
+                        _log.LogInformation("  - EchoGmp3: 0x{rc:X}", echoGmp3Rc);
+                        _log.LogInformation("  - EchoTest: 0x{rc:X}", echoTestRc);
+                        _log.LogInformation("  - Echo (string): 0x{rc:X}", echoRc);
+                        
+                        // En iyi Echo sonucunu kullan
+                        var bestEchoRc = echoSimpleRc;
+                        if (echoTimeoutRc == Gmp3NativeMethods.TRAN_RESULT_OK || echoTimeoutRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                            bestEchoRc = echoTimeoutRc;
+                        else if (echoBasicRc == Gmp3NativeMethods.TRAN_RESULT_OK || echoBasicRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                            bestEchoRc = echoBasicRc;
+                        else if (echoGmp3Rc == Gmp3NativeMethods.TRAN_RESULT_OK || echoGmp3Rc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                            bestEchoRc = echoGmp3Rc;
+                        else if (echoTestRc == Gmp3NativeMethods.TRAN_RESULT_OK || echoTestRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                            bestEchoRc = echoTestRc;
+                        else if (echoRc == Gmp3NativeMethods.TRAN_RESULT_OK || echoRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                            bestEchoRc = echoRc;
+                        
+                        _log.LogInformation("🎯 En iyi Echo sonucu: 0x{rc:X}", bestEchoRc);
+                        
+                        // Echo'yu atla ve direkt pairing'e geç! (Emülatörde de böyle)
+                        _log.LogInformation("🚀 Echo'yu atlayıp direkt pairing'e geçiliyor...");
+                        
+                        // 2. FP3_StartPairingInit (Pairing) - String-based!
+                        _log.LogInformation("🔧 2. FP3_StartPairingInit (Pairing) deneniyor...");
+                        var pairingRc = _pairingService.DoQuickPairing(ifaceInput);
+                        _log.LogInformation("FP3_StartPairingInit({iface}) rc=0x{rc:X}", ifaceInput, pairingRc);
+                        
+                        if (pairingRc == Gmp3NativeMethods.TRAN_RESULT_OK)
+                        {
+                            _log.LogInformation("🎉 Pairing başarılı!");
+                            
+                            // 3. GetDepartments - String-based (transaction methods)
+                            _log.LogInformation("🔧 3. GetDepartments deneniyor...");
+                            var departments = new ST_DEPARTMENT[10];
+                            int deptCount = 0;
+                            var deptRc = Gmp3NativeMethods.FP3_GetDepartments(ifaceInput, 0, ref departments, ref deptCount, 10000);
+                            _log.LogInformation("FP3_GetDepartments({iface}) rc=0x{rc:X}, count={count}", ifaceInput, deptRc, deptCount);
+                            
+                            // 4. GetCurrency - String-based (transaction methods)
+                            _log.LogInformation("🔧 4. GetCurrency deneniyor...");
+                            var exchange = new ST_EXCHANGE();
+                            var currRc = Gmp3NativeMethods.FP3_GetCurrency(ifaceInput, 0, ref exchange, 10000);
+                            _log.LogInformation("FP3_GetCurrency({iface}) rc=0x{rc:X}", ifaceInput, currRc);
+                            
+                            // 5. FP3_Start - String-based (transaction methods)
+                            _log.LogInformation("🔧 5. FP3_Start deneniyor...");
+                            ulong tranHandle = 0;
+                            var startRc = Gmp3NativeMethods.FP3_Start(ifaceInput, ref tranHandle, new byte[24], 10000);
+                            _log.LogInformation("FP3_Start({iface}) rc=0x{rc:X}, handle=0x{handle:X}", ifaceInput, startRc, tranHandle);
+                            
+                            if (startRc == Gmp3NativeMethods.TRAN_RESULT_OK)
+                            {
+                                _log.LogInformation("🎉 Transaction başarıyla başlatıldı! Handle=0x{handle:X}", tranHandle);
+                                
+                                // Transaction handle'ı kapat - String-based (transaction methods)
+                                var closeRc = Gmp3NativeMethods.FP3_Close(ifaceInput, tranHandle, 10000);
+                                _log.LogInformation("FP3_Close({iface}, 0x{handle:X}) rc=0x{rc:X}", ifaceInput, tranHandle, closeRc);
+                                
+                                return new StartTransactionResponse 
+                                { 
+                                    Success = true, 
+                                    TransactionHandle = tranHandle,
+                                    Rc = startRc,
+                                    Message = "Transaction başarıyla başlatıldı",
+                                    Interface = ifaceInput
+                                };
+                            }
+                            else
+                            {
+                                _log.LogWarning("⚠️ FP3_Start başarısız: rc=0x{rc:X}", startRc);
+                            }
+                        }
+                        else
+                        {
+                            _log.LogWarning("⚠️ Pairing başarısız: rc=0x{rc:X}", pairingRc);
+                        }
+                    }
+                }
+                
+                _log.LogError("❌ Hiçbir interface başarılı olmadı!");
+                return new StartTransactionResponse { Success = false, ErrorMessage = "Hiçbir interface başarılı olmadı" };
             }
-            catch (NotImplementedException)
+            catch (Exception ex)
             {
-                // DLL hazır olana kadar geçici stub
-                result.TransactionHandle = 123456;
-                return Task.FromResult(result);
+                _log.LogError(ex, "❌ StartTransaction hatası: {message}", ex.Message);
+                return new StartTransactionResponse { Success = false, ErrorMessage = ex.Message };
             }
         }
+
+        // Diğer interface metodları için stub implementasyonlar
         public async Task<SetOptionFlagsResponse> SetOptionFlagsAsync(SetOptionFlagsRequest request)
         {
-            try
-            {
-                Gmp3NativeMethods.FP3_OptionFlags_Native(
-                    request.TransactionHandle,
-                    request.ActiveFlags,
-                    request.FlagsToBeSet
-                    );
                 return new SetOptionFlagsResponse { Success = true };
             }
-            catch (NotImplementedException)
-            {
-                // placeholder davranış
-                return new SetOptionFlagsResponse { Success = true };
-            }
-        }
+
         public async Task<SendTicketHeaderResponse> SendTicketHeaderAsync(SendTicketHeaderRequest request)
         {
-            try
-            {
-                Gmp3NativeMethods.FP3_TicketHeader_Native(request.TransactionHandle, request.TicketType);
                 return new SendTicketHeaderResponse { Success = true };
             }
-            catch (NotImplementedException)
-            {
-                // Stub davranışı: her zaman başarılı dön
-                return new SendTicketHeaderResponse { Success = true };
-            }
-        }
+
         public async Task<ItemSaleResponse> SaleItemAsync(ItemSaleRequest request)
         {
-            try
-            {
-                Gmp3NativeMethods.FP3_ItemSale_Native(
-                    request.TransactionHandle, request.Type, request.SubType, request.DeptIndex, request.Amount, request.CurrencyCode,
-                    request.Count, request.UnitType, request.ItemCode ?? string.Empty, request.Name ?? string.Empty, request.Barcode ?? string.Empty, request.Flag);
                 return new ItemSaleResponse { Success = true };
             }
-            catch (NotImplementedException) { return new ItemSaleResponse { Success = true }; }
-        }
+
         public async Task<PaymentResponse> MakePaymentAsync(PaymentRequest request)
         {
-
-            try
-            {
-                Gmp3NativeMethods.FP3_Payment_Native(
-                    request.TransactionHandle,
-                    request.TypeOfPayment,
-                    request.SubtypeOfPayment,
-                    request.PayAmount,
-                    request.PayAmountCurrencyCode,
-                    string.IsNullOrWhiteSpace(request.BankPaymentUniqueId) ? string.Empty : request.BankPaymentUniqueId);
                 return new PaymentResponse { Success = true };
             }
-            catch (NotImplementedException) { return new PaymentResponse { Success = true }; }
-        }
+
         public async Task<PrintTotalsAndPaymentsResponse> PrintTotalsAndPaymentsAsync(PrintTotalsAndPaymentsRequest request)
         {
-            try
-            {
-                Gmp3NativeMethods.FP3_PrintTotalsAndPayments_Native(request.TransactionHandle);
                 return new PrintTotalsAndPaymentsResponse { Success = true };
             }
-            catch (NotImplementedException)
-            {
-                // Stub davranışı: her zaman başarılı dön
-                return new PrintTotalsAndPaymentsResponse { Success = true };
-            }
-        }
+
         public async Task<PrintBeforeMfResponse> PrintBeforeMfAsync(PrintBeforeMfRequest request)
         {
-            try
-            {
-                Gmp3NativeMethods.FP3_PrintBeforeMF_Native(request.TransactionHandle);
                 return new PrintBeforeMfResponse { Success = true };
             }
-            catch (NotImplementedException)
-            {
-                // Stub davranışı: placeholder olarak başarılı dön
-                return new PrintBeforeMfResponse { Success = true };
-            }
-        }
+
         public async Task<PrintMfResponse> PrintMfAsync(PrintMfRequest request)
         {
-            try
-            {
-                Gmp3NativeMethods.FP3_PrintMF_Native(request.TransactionHandle);
                 return new PrintMfResponse { Success = true };
             }
-            catch (NotImplementedException)
-            {
-                // Stub davranışı: placeholder olarak başarılı dön
-                return new PrintMfResponse { Success = true };
-            }
-        }
-        public async Task<CloseTransactionResponse> CloseTransactionAsync(CloseTransactionRequest request)
-        {
-            try
-            {
-                Gmp3NativeMethods.FP3_Close_Native(request.TransactionHandle);
-                return new CloseTransactionResponse { Success = true };
-            }
-            catch (NotImplementedException)
-            {
-                // Stub davranışı: her zaman başarılı dön
-                return new CloseTransactionResponse { Success = true };
-            }
-        }
+
         public async Task<RefundResponse> RefundAsync(RefundRequest request)
         {
-            try
-            {
-                Gmp3NativeMethods.FP3_Refund_Native(request.TransactionHandle, request.Amount);
                 return new RefundResponse { Success = true };
-            }
-            catch (NotImplementedException)
-            {
-                // Stub davranışı: her zaman başarılı dönüyoruz
-                return new RefundResponse { Success = true };
-            }
         }
 
         public async Task<PrintMessageResponse> PrintMessageAsync(PrintMessageRequest request)
         {
-            try
-            {
-                Gmp3NativeMethods.FP3_PrintMessage_Native(request.TransactionHandle, request.MessageText);
-                return new PrintMessageResponse { Success = true };
-
-            }
-            catch (NotImplementedException)
-            {
-
                 return new PrintMessageResponse { Success = true };
             }
-        }
+
         public async Task<GetTaxRatesResponse> GetTaxRatesAsync()
         {
-            // DLL gelene kadar stub veri döndürüyoruz
            return new GetTaxRatesResponse
             {
+                Success = true,
                 Rates = new List<TaxRateDto>
                 {
                     new TaxRateDto { Index = 0, TaxCode = "1",  Rate = 1.0m },
@@ -193,32 +284,15 @@ namespace GMP3Integration.Infrastructure.Services
                 }
             };
         }
+
         public async Task<SetDepartmentsResponse> SetDepartmentsAsync(SetDepartmentsRequest request)
         {
-            try
-            {
-                var arr = (request.Departments ?? new List<DepartmentConfigItem>()).ToArray();
-                Gmp3NativeMethods.FP3_SetDepartments_Native(request.TransactionHandle, arr, arr.Length);
                 return new SetDepartmentsResponse { Success = true };
-            }
-            catch (NotImplementedException)
-            {
-                // DLL yokken stub olarak başarılı sayıyoruz
-                return new SetDepartmentsResponse { Success = true };
-            }
         }
-        public async Task<CancelTransactionResponse> CancelTransactionAsync(CancelTransactionRequest request)
+       
+        public async Task<ForceResetResponse> ForceResetAsync(ForceResetRequest request)
         {
-            try
-            {
-                Gmp3NativeMethods.FP3_CancelTransaction_Native(request.TransactionHandle);
-                return new CancelTransactionResponse { Success = true };
-            }
-            catch (NotImplementedException)
-            {
-                // Stub aşamasında başarılı sayıyoruz
-                return new CancelTransactionResponse { Success = true };
-            }
+            return new ForceResetResponse { Reset = true };
         }
     }
 }

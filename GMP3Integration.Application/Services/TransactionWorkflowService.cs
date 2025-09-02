@@ -46,6 +46,25 @@ namespace GMP3Integration.Application.Services
         /// <inheritdoc />
         public async Task<CompleteSaleResponse> ExecuteCompleteSaleAsync(CompleteSaleRequest request)
         {
+            // Validation
+            if (string.IsNullOrWhiteSpace(request.CurrentInterface))
+                throw new ArgumentException("currentInterface zorunludur.");
+
+            if (request.Items == null || request.Items.Count == 0)
+                throw new ArgumentException("En az bir item gereklidir.");
+
+            if (request.Payment == null)
+                throw new ArgumentException("payment zorunludur.");
+
+            // temel item kontrolleri
+            foreach (var it in request.Items)
+            {
+                if (it.DeptIndex < 0) throw new ArgumentException("items[].deptIndex 0 veya büyük olmalıdır.");
+                if (it.Amount <= 0) throw new ArgumentException("items[].amount > 0 olmalıdır (kuruş).");
+                if (it.CurrencyCode <= 0) throw new ArgumentException("items[].currencyCode zorunludur (ör. 949).");
+                if (it.Count <= 0) throw new ArgumentException("items[].count > 0 olmalıdır.");
+                if (it.UnitType <= 0) throw new ArgumentException("items[].unitType > 0 olmalıdır.");
+            }
 
             var iface = string.IsNullOrWhiteSpace(request.CurrentInterface)
             ? _opts.CurrentInterface
@@ -60,8 +79,6 @@ namespace GMP3Integration.Application.Services
             using (_logger.BeginScope(new Dictionary<string, object> { { "transactionHandle", handle } }))
             {
                 _logger.LogInformation("Transaction started. Interface={Interface}", iface);
-
-                
 
                 // 2. OptionFlags
                 await _gmp3Service.SetOptionFlagsAsync(
@@ -124,59 +141,33 @@ namespace GMP3Integration.Application.Services
                     new PrintBeforeMfRequest { TransactionHandle = handle });
 
                 // 8. PrintMessages
-
-                if (string.IsNullOrWhiteSpace(request.CurrentInterface))
-                    throw new ArgumentException("currentInterface zorunludur.");
-
-                if (request.Items == null || request.Items.Count == 0)
-                    throw new ArgumentException("En az bir item gereklidir.");
-
-                if (request.Payment == null)
-                    throw new ArgumentException("payment zorunludur.");
-
-                // temel item kontrolleri
-                foreach (var it in request.Items)
+                if (request.Messages != null)
                 {
-                    if (it.DeptIndex < 0) throw new ArgumentException("items[].deptIndex 0 veya büyük olmalıdır.");
-                    if (it.Amount <= 0) throw new ArgumentException("items[].amount > 0 olmalıdır (kuruş).");
-                    if (it.CurrencyCode <= 0) throw new ArgumentException("items[].currencyCode zorunludur (ör. 949).");
-                    if (it.Count <= 0) throw new ArgumentException("items[].count > 0 olmalıdır.");
-                    if (it.UnitType <= 0) throw new ArgumentException("items[].unitType > 0 olmalıdır.");
-                }
-
-
-                foreach (var m in request.Messages)
-                {
-                    var msgReq = new PrintMessageRequest
+                    foreach (var m in request.Messages)
                     {
-                        TransactionHandle = handle,
-                        MessageText = m.MessageText
-                    };
-                    await _gmp3Service.PrintMessageAsync(msgReq);
+                        var msgReq = new PrintMessageRequest
+                        {
+                            TransactionHandle = handle,
+                            MessageText = m.MessageText
+                        };
+                        await _gmp3Service.PrintMessageAsync(msgReq);
+                    }
                 }
 
                 // 9. PrintMF
                 await _gmp3Service.PrintMfAsync(
                     new PrintMfRequest { TransactionHandle = handle });
-
+                /*
                 // 12. CloseTransaction
                 await _gmp3Service.CloseTransactionAsync(
                     new CloseTransactionRequest { TransactionHandle = handle });
-
+                */
                 return new CompleteSaleResponse
                 {
                     TransactionHandle = handle,
                     Success = true
                 };
             }
-
-            return new CompleteSaleResponse { TransactionHandle = handle, Success = true };
-
-
-
-            
-
-
         }
     }
 }

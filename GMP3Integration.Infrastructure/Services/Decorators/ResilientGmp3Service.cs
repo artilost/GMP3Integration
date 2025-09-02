@@ -3,6 +3,7 @@ using GMP3Integration.Application.DTOs.CancelTansaction;
 using GMP3Integration.Application.DTOs.CanselTransaction;
 using GMP3Integration.Application.DTOs.CloseTransaction;
 using GMP3Integration.Application.DTOs.DepertmenConfiguration;
+using GMP3Integration.Application.DTOs.ForceReset;
 using GMP3Integration.Application.DTOs.ItemSale;
 using GMP3Integration.Application.DTOs.OptionFlags;
 using GMP3Integration.Application.DTOs.Payment;
@@ -111,13 +112,13 @@ namespace GMP3Integration.Infrastructure.Services.Decorators
 
         public Task<PrintMfResponse> PrintMfAsync(PrintMfRequest request)
             => Execute(() => _inner.PrintMfAsync(request), "PrintMF");
-
+        /*
         public Task<CloseTransactionResponse> CloseTransactionAsync(CloseTransactionRequest request)
             => Execute(() => _inner.CloseTransactionAsync(request), "CloseTransaction");
-
+       
         public Task<CancelTransactionResponse> CancelTransactionAsync(CancelTransactionRequest request)
             => Execute(() => _inner.CancelTransactionAsync(request), "CancelTransaction");
-
+         */
         public Task<GetTaxRatesResponse> GetTaxRatesAsync()
             => Execute(() => _inner.GetTaxRatesAsync(), "GetTaxRates");
 
@@ -126,5 +127,8 @@ namespace GMP3Integration.Infrastructure.Services.Decorators
 
         public Task<RefundResponse> RefundAsync(RefundRequest request)
         => Execute(() => _inner.RefundAsync(request), "Refund");
+
+        public Task<ForceResetResponse> ForceResetAsync(ForceResetRequest request)
+        => Execute(() => _inner.ForceResetAsync(request), "ForceReset");
     }
 }
