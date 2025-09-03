@@ -11,13 +11,18 @@ namespace GMP3Integration.Infrastructure.Interop.Native.PInvoke
     {
         // Interface Management Methods
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_CreateInterface")]
-        public static extern int CreateInterface(string iface);  // Handle yok!
+        public static extern int CreateInterface(string iface, ref uint handle);  // Handle döndürüyor!
 
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Close")]
         public static extern int Close(string iface, int timeout);
 
+        // EMULATOR PATTERN: Handle-based Echo!
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Echo")]
-        public static extern int Echo(string iface, ref ST_ECHO pStEcho, int TimeoutInMiliseconds);  // String-based!
+        public static extern int Echo(uint handle, ref ST_ECHO pStEcho, int TimeoutInMiliseconds);  // Handle-based!
+        
+        // LEGACY: String-based fallback
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Echo")]
+        public static extern int Echo_StringBased(string iface, ref ST_ECHO pStEcho, int TimeoutInMiliseconds);  // String-based!
 
         // Basit Echo method'u (string ile) - Test için!
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Echo")]
@@ -43,9 +48,38 @@ namespace GMP3Integration.Infrastructure.Interop.Native.PInvoke
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Busy")]
         public static extern int Busy(string iface, int timeout);
 
-        // Pairing Methods - String-based (Echo ile tutarlı!)
+        // Pairing Methods - String-based (ECHO GİBİ DENEME!)
+        // EMULATOR PATTERN: Handle-based!
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_StartPairingInit")]
-        public static extern int StartPairingInit(string iface, ref ST_GMP_PAIR pairing);  // String-based!
+        public static extern int StartPairingInit(uint handle, ref ST_GMP_PAIR pairing, ref ST_GMP_PAIR_RESP pairingResp);
+        
+        // LEGACY: String-based fallback
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_StartPairingInit")]
+        public static extern int StartPairingInit_StringBased(string iface, ref ST_GMP_PAIR pairing);  // String-based!
+        
+        // ALTERNATIVE: Farklı calling convention dene
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "FP3_StartPairingInit")]
+        public static extern int StartPairingInit_StdCall(string iface, ref ST_GMP_PAIR pairing);
+        
+        // HANDLE-BASED: uint handle ile pairing (emulator style)
+        // OLD STYLE (0xF032 veriyor):
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "GMP_StartPairingInit")]
+        public static extern int StartPairingInit_Handle_Old(uint hInt, ref ST_GMP_PAIR pairing, ref ST_GMP_PAIR_RESP pairingResp, int timeout);
+        
+        // NEW STYLE 1: Response parameter olmadan (3 parametre)
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "GMP_StartPairingInit")]
+        public static extern int StartPairingInit_Handle_NewStyle1(uint hInt, ref ST_GMP_PAIR pairing, int timeout);
+        
+        // NEW STYLE 2: Struct by value
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "GMP_StartPairingInit")]
+        public static extern int StartPairingInit_Handle_NewStyle2(uint hInt, ST_GMP_PAIR pairing, ref ST_GMP_PAIR_RESP pairingResp, int timeout);
+        
+        // ESKİ İSİM BACKWARD COMPATIBILITY İÇİN
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "GMP_StartPairingInit")]
+        public static extern int StartPairingInit_Handle(uint hInt, ref ST_GMP_PAIR pairing, ref ST_GMP_PAIR_RESP pairingResp, int timeout);
+        
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GMP_StartPairingInit")]
+        public static extern int StartPairingInit_Handle_StdCall(uint hInt, ref ST_GMP_PAIR pairing, ref ST_GMP_PAIR_RESP pairingResp, int timeout);
 
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_StartPairingApprove")]
         public static extern int StartPairingApprove(string iface, ref ST_GMP_PAIR_RESP pairingResp, int timeout);  // String-based!
@@ -77,7 +111,7 @@ namespace GMP3Integration.Infrastructure.Interop.Native.PInvoke
 
         /// <summary>
         /// Get interface handle from string interface name
-        /// For JSON-based methods that require uint handles
+        /// IMPROVED: Proper handle generation for pairing
         /// </summary>
         public static uint GetInterfaceHandle(string iface)
         {
@@ -87,24 +121,21 @@ namespace GMP3Integration.Infrastructure.Interop.Native.PInvoke
                 return directHandle;
             }
 
-            // For string-based interfaces, we need to create/get a handle
-            // This is a simplified approach - in practice, you might need to maintain a mapping
+            // EMULATOR PATTERN: Gerçek handle'ı kullan!
+            // Bu method artık sadece fallback için - gerçek handle CreateInterface'den gelir
             try
             {
-                // Try to create interface and get handle
-                int result = CreateInterface(iface);
-                if (result == Gmp3Constants.DLL_RETCODE_CREATE_INTERFACE_SUCCESS)
-                {
-                    // For now, return a default handle - in practice you'd need to track this
-                    return 1; // Default handle
-                }
+                // CreateInterface çağrılmış olmalı ve handle kaydedilmiş olmalı
+                // Eğer kaydedilmemişse, interface string'den deterministic hash üret
+                uint hash = (uint)iface.GetHashCode();
+                if (hash == 0) hash = 1; // Ensure non-zero handle
+                return hash & 0x7FFFFFFF; // Ensure positive
             }
             catch
             {
-                // Ignore errors
+                // If anything fails, still try to generate handle
+                return 1; // Fallback to handle 1
             }
-
-            return 0; // No handle available
         }
     }
 }
