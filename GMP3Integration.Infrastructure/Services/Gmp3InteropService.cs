@@ -21,6 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using GMP3Integration.Infrastructure.Interop.Native.PInvoke;
 
 namespace GMP3Integration.Infrastructure.Services
 {
@@ -62,9 +63,18 @@ namespace GMP3Integration.Infrastructure.Services
                 {
                     _log.LogInformation("🔍 Interface deneniyor: {iface}", ifaceInput);
                     
-                    // Emulator style: Handle döndürür!
+                    // Emulator style: GERÇEK Handle döndürür!
                     uint interfaceHandle = 0;
                     var rc = Gmp3NativeMethods.CreateInterface(ifaceInput, ref interfaceHandle);
+                    
+                    // CRITICAL: Gerçek handle'ı GetInterfaceHandleByID ile al!
+                    if (rc == Gmp3NativeMethods.TRAN_RESULT_OK || rc == Gmp3NativeMethods.DLL_RETCODE_CREATE_INTERFACE_SUCCESS)
+                    {
+                        var ifaceBytes = System.Text.Encoding.ASCII.GetBytes(ifaceInput + "\0");
+                        var handleResult = Gmp3InterfaceMethods.FP3_GetInterfaceHandleByID(ref interfaceHandle, ifaceBytes);
+                        _log.LogInformation("GetInterfaceHandleByID({iface}) result=0x{result:X}, realHandle={realHandle}", ifaceInput, handleResult, interfaceHandle);
+                    }
+                    
                     _log.LogInformation("CreateInterface({iface}) rc=0x{rc:X}, handle={handle}", ifaceInput, rc, interfaceHandle);
                     
                 if (rc == Gmp3NativeMethods.DLL_RETCODE_INVALID_INTERFACE)
@@ -105,57 +115,11 @@ namespace GMP3Integration.Infrastructure.Services
                         // 1. FP3_Echo (Handshake) - String-based!
                         _log.LogInformation("🔧 1. FP3_Echo (Handshake) deneniyor...");
                         
-                        // TEST: Önce basit Echo method'unu dene (string ile)
-                        _log.LogInformation("🧪 TEST: Basit Echo method'u deneniyor (string ile)...");
-                        var echoSimpleRc = Gmp3NativeMethods.EchoSimple(ifaceInput);
-                        _log.LogInformation("EchoSimple({iface}) rc=0x{rc:X}", ifaceInput, echoSimpleRc);
-                        
-                        // TEST: Alternatif Echo method'u dene (string + timeout ile)
-                        _log.LogInformation("🧪 TEST: Alternatif Echo method'u deneniyor (string + timeout ile)...");
-                        var echoTimeoutRc = Gmp3NativeMethods.EchoWithTimeout(ifaceInput, 10000);
-                        _log.LogInformation("EchoWithTimeout({iface}) rc=0x{rc:X}", ifaceInput, echoTimeoutRc);
-                        
-                        // TEST: Farklı function isimleri dene!
-                        _log.LogInformation("🧪 TEST: Farklı function isimleri deneniyor...");
-                        var echoBasicRc = Gmp3NativeMethods.EchoBasic(ifaceInput);
-                        _log.LogInformation("EchoBasic({iface}) rc=0x{rc:X}", ifaceInput, echoBasicRc);
-                        
-                        var echoGmp3Rc = Gmp3NativeMethods.EchoGmp3(ifaceInput);
-                        _log.LogInformation("EchoGmp3({iface}) rc=0x{rc:X}", ifaceInput, echoGmp3Rc);
-                        
-                        var echoTestRc = Gmp3NativeMethods.EchoTest(ifaceInput);
-                        _log.LogInformation("EchoTest({iface}) rc=0x{rc:X}", ifaceInput, echoTestRc);
-                        
-                        // Orijinal Echo method'u (string ile) - Emulator'dan alındı!
-                        _log.LogInformation("🔧 Orijinal Echo method'u deneniyor (string ile)...");
+                        // EMULATOR PATTERN: Clean Echo call
+                        _log.LogInformation("🔧 Echo (Handshake) deneniyor...");
                         var echo = new ST_ECHO();
-                        var echoRc = Gmp3NativeMethods.Echo(ifaceInput, ref echo, 10000);  // String!
-                        _log.LogInformation("FP3_Echo({iface}) rc=0x{rc:X}", ifaceInput, echoRc);
-                        
-                        // Echo test sonuçlarını kontrol et
-                        _log.LogInformation("📊 Echo Test Sonuçları:");
-                        _log.LogInformation("  - EchoSimple: 0x{rc:X}", echoSimpleRc);
-                        _log.LogInformation("  - EchoWithTimeout: 0x{rc:X}", echoTimeoutRc);
-                        _log.LogInformation("  - EchoBasic: 0x{rc:X}", echoBasicRc);
-                        _log.LogInformation("  - EchoGmp3: 0x{rc:X}", echoGmp3Rc);
-                        _log.LogInformation("  - EchoTest: 0x{rc:X}", echoTestRc);
-                        _log.LogInformation("  - Echo (string): 0x{rc:X}", echoRc);
-                        
-                        // En iyi Echo sonucunu kullan - EMULATOR PATTERN: 0x0000 SUCCESS!
-                        var bestEchoRc = echoSimpleRc;
-                        if (echoTimeoutRc == Gmp3NativeMethods.TRAN_RESULT_OK)  // 0x0000
-                            bestEchoRc = echoTimeoutRc;
-                        else if (echoBasicRc == Gmp3NativeMethods.TRAN_RESULT_OK)  // 0x0000
-                            bestEchoRc = echoBasicRc;
-                        else if (echoGmp3Rc == Gmp3NativeMethods.TRAN_RESULT_OK)  // 0x0000
-                            bestEchoRc = echoGmp3Rc;
-                        else if (echoTestRc == Gmp3NativeMethods.TRAN_RESULT_OK)  // 0x0000
-                            bestEchoRc = echoTestRc;
-                        else if (echoRc == Gmp3NativeMethods.TRAN_RESULT_OK)  // 0x0000
-                            bestEchoRc = echoRc;
-                        // FALLBACK: 0xF035 (HANDSHAKE) da kabul et
-                        else if (echoTimeoutRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE || echoRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
-                            bestEchoRc = (echoTimeoutRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE) ? echoTimeoutRc : echoRc;
+                        var bestEchoRc = Gmp3NativeMethods.Echo(ifaceInput, ref echo, 10000);
+                        _log.LogInformation("FP3_Echo({iface}) rc=0x{rc:X}", ifaceInput, bestEchoRc);
                         
                         _log.LogInformation("🎯 En iyi Echo sonucu: 0x{rc:X}", bestEchoRc);
                         
@@ -191,11 +155,11 @@ namespace GMP3Integration.Infrastructure.Services
                             var currRc = Gmp3NativeMethods.FP3_GetCurrency(ifaceInput, 0, ref exchange, 10000);
                             _log.LogInformation("FP3_GetCurrency({iface}) rc=0x{rc:X}", ifaceInput, currRc);
                             
-                            // 5. FP3_Start - String-based (transaction methods)
-                            _log.LogInformation("🔧 5. FP3_Start deneniyor...");
+                            // 5. FP3_Start - STRING-BASED (AccessViolationException önleme!)
+                            _log.LogInformation("🔧 5. FP3_Start (String-based fallback) deneniyor...");
                             ulong tranHandle = 0;
                             var startRc = Gmp3NativeMethods.FP3_Start(ifaceInput, ref tranHandle, new byte[24], 10000);
-                            _log.LogInformation("FP3_Start({iface}) rc=0x{rc:X}, handle=0x{handle:X}", ifaceInput, startRc, tranHandle);
+                            _log.LogInformation("FP3_Start(iface={iface}) rc=0x{rc:X}, tranHandle=0x{tranHandle:X}", ifaceInput, startRc, tranHandle);
                             
                             if (startRc == Gmp3NativeMethods.TRAN_RESULT_OK)
                             {
@@ -227,12 +191,28 @@ namespace GMP3Integration.Infrastructure.Services
                 }
                 
                 _log.LogError("❌ Hiçbir interface başarılı olmadı!");
-                return new StartTransactionResponse { Success = false, ErrorMessage = "Hiçbir interface başarılı olmadı" };
+                return new StartTransactionResponse 
+                { 
+                    Success = false, 
+                    TransactionHandle = 0,
+                    Rc = -1,
+                    ErrorMessage = "Hiçbir interface başarılı olmadı",
+                    ExistingOpenTicket = false,
+                    Interface = variants.FirstOrDefault()
+                };
             }
             catch (Exception ex)
             {
                 _log.LogError(ex, "❌ StartTransaction hatası: {message}", ex.Message);
-                return new StartTransactionResponse { Success = false, ErrorMessage = ex.Message };
+                return new StartTransactionResponse 
+                { 
+                    Success = false, 
+                    TransactionHandle = 0,
+                    Rc = -2,
+                    ErrorMessage = ex.Message,
+                    ExistingOpenTicket = false,
+                    Interface = request?.CurrentInterface
+                };
             }
         }
 

@@ -20,30 +20,23 @@ namespace GMP3Integration.Infrastructure.Interop.Native.PInvoke
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Echo")]
         public static extern int Echo(uint handle, ref ST_ECHO pStEcho, int TimeoutInMiliseconds);  // Handle-based!
         
-        // LEGACY: String-based fallback
+        // LEGACY: String-based fallback (minimal)
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Echo")]
-        public static extern int Echo_StringBased(string iface, ref ST_ECHO pStEcho, int TimeoutInMiliseconds);  // String-based!
-
-        // Basit Echo method'u (string ile) - Test için!
-        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Echo")]
-        public static extern int EchoSimple(string iface);  // String ile!
-
-        // Alternatif Echo method'u (string + timeout ile) - Test için!
-        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Echo")]
-        public static extern int EchoWithTimeout(string iface, int timeout);  // String + timeout!
-
-        // TEST: Farklı function isimleri dene!
-        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "Echo")]
-        public static extern int EchoBasic(string iface);  // "Echo" + string!
-
-        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "GMP3_Echo")]
-        public static extern int EchoGmp3(string iface);  // "GMP3_Echo" + string!
-
-        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "EchoTest")]
-        public static extern int EchoTest(string iface);  // "EchoTest" + string!
+        public static extern int Echo_StringBased(string iface, ref ST_ECHO pStEcho, int TimeoutInMiliseconds);
 
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Ping")]
         public static extern int Ping(string iface);  // String-based!
+
+        // EMULATOR PATTERN: GetInterfaceHandleByID - Handle almak için
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_GetInterfaceHandleByID")]
+        public static extern int FP3_GetInterfaceHandleByID(ref uint phInt, byte[] szID);
+
+        // EMULATOR JSON PATTERN: JSON-based Echo ve StartPairingInit!
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "Json_FP3_Echo")]
+        public static extern int Json_FP3_Echo(uint hInt, byte[] szEcho_Out, int EchoLen_Out, int TimeoutInMiliseconds);
+
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "Json_FP3_StartPairingInit")]
+        public static extern int Json_FP3_StartPairingInit(uint hInt, byte[] szPairing, byte[] szPairingResp, int PairingRespLen);
 
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Busy")]
         public static extern int Busy(string iface, int timeout);
@@ -57,22 +50,9 @@ namespace GMP3Integration.Infrastructure.Interop.Native.PInvoke
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_StartPairingInit")]
         public static extern int StartPairingInit_StringBased(string iface, ref ST_GMP_PAIR pairing);  // String-based!
         
-        // ALTERNATIVE: Farklı calling convention dene
-        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "FP3_StartPairingInit")]
-        public static extern int StartPairingInit_StdCall(string iface, ref ST_GMP_PAIR pairing);
-        
-        // HANDLE-BASED: uint handle ile pairing (emulator style)
-        // OLD STYLE (0xF032 veriyor):
+        // FALLBACK: Test methods for debugging (minimal)
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "GMP_StartPairingInit")]
         public static extern int StartPairingInit_Handle_Old(uint hInt, ref ST_GMP_PAIR pairing, ref ST_GMP_PAIR_RESP pairingResp, int timeout);
-        
-        // NEW STYLE 1: Response parameter olmadan (3 parametre)
-        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "GMP_StartPairingInit")]
-        public static extern int StartPairingInit_Handle_NewStyle1(uint hInt, ref ST_GMP_PAIR pairing, int timeout);
-        
-        // NEW STYLE 2: Struct by value
-        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "GMP_StartPairingInit")]
-        public static extern int StartPairingInit_Handle_NewStyle2(uint hInt, ST_GMP_PAIR pairing, ref ST_GMP_PAIR_RESP pairingResp, int timeout);
         
         // ESKİ İSİM BACKWARD COMPATIBILITY İÇİN
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "GMP_StartPairingInit")]
@@ -87,8 +67,7 @@ namespace GMP3Integration.Infrastructure.Interop.Native.PInvoke
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_StartPairingInitWithPairing")]
         public static extern int StartPairingInitWithPairing(string iface, ref ST_GMP_PAIR pairing, ref ST_GMP_PAIR_RESP pairingResp, int timeout);  // String-based!
 
-        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_StartPairingInit_All")]
-        public static extern int StartPairingInit_All(string iface, ref ST_GMP_PAIR pairing, int timeout);  // String-based!
+
 
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_StartPairingInitWithPairing_All")]
         public static extern int StartPairingInitWithPairing_All(string iface, ref ST_GMP_PAIR pairing, ref ST_GMP_PAIR_RESP pairingResp, int timeout);  // String-based!

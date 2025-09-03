@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.InteropServices;
 using GMP3Integration.Infrastructure.Interop.Native.Constants;
 using GMP3Integration.Infrastructure.Interop.Native.Structs;
@@ -12,6 +13,10 @@ namespace GMP3Integration.Infrastructure.Interop.Native.PInvoke
         // Core Transaction Methods
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Start")]
         public static extern int FP3_Start(string iface, ref ulong tranHandle, byte[] uniqueId, int timeout);
+
+        // EMULATOR PATTERN: Handle-based FP3_Start! - IntPtr ile deneyelim
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "FP3_Start")]
+        public static extern int FP3_Start_Handle(IntPtr interfaceHandle, ref ulong tranHandle, byte[] uniqueId, int timeout);
 
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Close")]
         public static extern int FP3_Close(string iface, ulong tranHandle, int timeout);

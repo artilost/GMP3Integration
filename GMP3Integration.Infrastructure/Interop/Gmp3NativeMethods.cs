@@ -168,24 +168,57 @@ namespace GMP3Integration.Infrastructure.Interop
         /// <summary>
         /// StartPairingInit method (HANDLE-BASED EMULATOR STYLE) - UNIQUE WRAPPER
         /// </summary>
-        internal static int StartPairingInit_EmulatorWrapper(string iface, ref Native.Structs.ST_GMP_PAIR pairing)
+        internal static int StartPairingInit_EmulatorWrapper(string iface, ref Native.Structs.ST_GMP_PAIR pairing, bool isEmulatorPattern = true)
         {
-            // IMMEDIATE DEBUG - EN BAŞTA! - API LOG KULLAN!
+            // WRAPPER ÇALIŞIYOR! Debug log'u log dosyasına yaz
+            var logPath = Path.Combine(Directory.GetCurrentDirectory(), "debug_handle.log");
             try {
-                // API log'a yaz (Console çalışmıyor)
-                System.Diagnostics.Debug.WriteLine($"🚀 WRAPPER ENTRY: StartPairingInit({iface})");
-                File.AppendAllText("debug_handle.log", 
-                    $"{DateTime.Now:HH:mm:ss.fff} 🚀 WRAPPER ENTRY: StartPairingInit({iface})\r\n");
+                File.AppendAllText(logPath, 
+                    $"{DateTime.Now:HH:mm:ss.fff} 🚀 WRAPPER ENTRY: StartPairingInit_EmulatorWrapper({iface})\r\n");
+                System.Diagnostics.Debug.WriteLine($"🚀 WRAPPER ENTRY: StartPairingInit_EmulatorWrapper({iface})");
             } catch (Exception ex) {
-                System.Diagnostics.Debug.WriteLine($"❌ DEBUG EXCEPTION: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ DEBUG LOG EXCEPTION: {ex.Message}");
             }
             
             try 
             {
                                                     // EMULATOR STYLE: Handle-based yaklaşım (en önemli!)
-                // Artık gerçek handle'ı kullan (_currentInterfaceHandle CreateInterface'de set edildi)
-                uint handle = _currentInterfaceHandle > 0 ? _currentInterfaceHandle : GetInterfaceHandle(iface);
-                Debug.WriteLine($"🔗 Handle for {iface}: {handle} (current={_currentInterfaceHandle})");
+                // EMULATOR PATTERN: GetInterfaceHandleByID kullan!
+                uint handle = 0;
+                var ifaceBytes = System.Text.Encoding.ASCII.GetBytes(iface + "\0");
+                
+                try {
+                    File.AppendAllText(logPath, 
+                        $"{DateTime.Now:HH:mm:ss.fff} 🔍 Trying FP3_GetInterfaceHandleByID for {iface}\r\n");
+                        
+                    var result = Gmp3InterfaceMethods.FP3_GetInterfaceHandleByID(ref handle, ifaceBytes);
+                    File.AppendAllText(logPath, 
+                        $"{DateTime.Now:HH:mm:ss.fff} 🔍 FP3_GetInterfaceHandleByID result: 0x{result:X}, handle: {handle}\r\n");
+                        
+                    // SUCCESS kontrolü - 0x0000 döndürse bile handle 0 olabilir
+                    if (handle == 0 || result != TRAN_RESULT_OK) {
+                        // CreateInterface ile yeni handle oluştur
+                        uint newHandle = 0;
+                        var createResult = CreateInterface(iface, ref newHandle);
+                        File.AppendAllText(logPath, 
+                            $"{DateTime.Now:HH:mm:ss.fff} 🆕 CreateInterface result: 0x{createResult:X}, newHandle: {newHandle}\r\n");
+                            
+                        if (newHandle > 0) {
+                            handle = newHandle;
+                            _currentInterfaceHandle = newHandle; // Cache et
+                        } else {
+                            handle = GetInterfaceHandle(iface); // Final fallback
+                            File.AppendAllText(logPath, 
+                                $"{DateTime.Now:HH:mm:ss.fff} 🔄 Final fallback handle: {handle}\r\n");
+                        }
+                    }
+                } catch (Exception ex) {
+                    File.AppendAllText(logPath, 
+                        $"{DateTime.Now:HH:mm:ss.fff} ❌ GetInterfaceHandleByID exception: {ex.Message}\r\n");
+                    handle = GetInterfaceHandle(iface); // Fallback
+                }
+                
+                Debug.WriteLine($"🔗 Final handle for {iface}: {handle}");
                     
                     try {
                         File.AppendAllText("debug_handle.log", 
@@ -206,15 +239,43 @@ namespace GMP3Integration.Infrastructure.Interop
                     
                     var pairingResp = new ST_GMP_PAIR_RESP();
                     
-                    // PRIMARY: EMULATOR PATTERN - Handle-based StartPairingInit
-                    Debug.WriteLine($"🎯 EMULATOR: StartPairingInit(handle={handle})...");
-                    var result = Gmp3InterfaceMethods.StartPairingInit(handle, ref pairing, ref pairingResp);
-                    Debug.WriteLine($"EMULATOR StartPairingInit({handle}) rc=0x{result:X}");
+                    // PRIMARY: EMULATOR JSON PATTERN - JSON-based StartPairingInit!
+                    Debug.WriteLine($"🎯 EMULATOR JSON: Json_FP3_StartPairingInit(handle={handle})...");
+                    
+                    // JSON Serialize - System.Text.Json ile (runtime uyumluluğu için)
+                    var pairingJson = System.Text.Json.JsonSerializer.Serialize(pairing);
+                    var pairingBytes = System.Text.Encoding.ASCII.GetBytes(pairingJson + "\0"); // Null terminated!
+                    var responseBytes = new byte[4096]; // Response buffer
+                    
+                    File.AppendAllText(logPath, 
+                        $"{DateTime.Now:HH:mm:ss.fff} 📝 JSON Serialized: {pairingJson.Substring(0, Math.Min(100, pairingJson.Length))}...\r\n");
+                    
+                    var result = Gmp3InterfaceMethods.Json_FP3_StartPairingInit(handle, pairingBytes, responseBytes, responseBytes.Length);
+                    Debug.WriteLine($"EMULATOR JSON StartPairingInit({handle}) rc=0x{result:X}");
                     
                     try {
-                        File.AppendAllText("debug_handle.log", 
-                            $"{DateTime.Now:HH:mm:ss.fff} 🎯 EMULATOR RESULT: 0x{result:X}\r\n");
-                    } catch { }
+                        File.AppendAllText(logPath, 
+                            $"{DateTime.Now:HH:mm:ss.fff} 🎯 JSON EMULATOR RESULT: 0x{result:X}\r\n");
+                            
+                        // JSON Response Parse et (emulator gibi)
+                        if (result == TRAN_RESULT_OK && responseBytes.Length > 0) {
+                            var responseJson = System.Text.Encoding.ASCII.GetString(responseBytes).TrimEnd('\0');
+                            if (!string.IsNullOrEmpty(responseJson)) {
+                                try {
+                                    // System.Text.Json ile parse et - DOĞRU TYPE!
+                                    pairingResp = System.Text.Json.JsonSerializer.Deserialize<ST_GMP_PAIR_RESP>(responseJson);
+                                    File.AppendAllText(logPath, 
+                                        $"{DateTime.Now:HH:mm:ss.fff} ✅ JSON Response parsed: {responseJson.Substring(0, Math.Min(100, responseJson.Length))}...\r\n");
+                                } catch (Exception parseEx) {
+                                    File.AppendAllText(logPath, 
+                                        $"{DateTime.Now:HH:mm:ss.fff} ❌ JSON Parse error: {parseEx.Message}\r\n");
+                                }
+                            }
+                        }
+                    } catch (Exception ex) {
+                        File.AppendAllText(logPath, 
+                            $"{DateTime.Now:HH:mm:ss.fff} ❌ JSON Exception: {ex.Message}\r\n");
+                    }
                     
                     // EMULATOR BAŞARI KODU: 0x0000 (0)
                     if (result == TRAN_RESULT_OK) // 0x0000 = SUCCESS (emulator'dan öğrenilen!)
@@ -236,29 +297,14 @@ namespace GMP3Integration.Infrastructure.Interop
                         return result;
                     }
                     
-                    // FALLBACK: Eski test methodları (debug için)
+                    // FALLBACK: Simple old method test
                     try {
                         File.AppendAllText("debug_handle.log", 
-                            $"{DateTime.Now:HH:mm:ss.fff} ⚠️ EMULATOR pattern failed, trying OLD methods...\r\n");
+                            $"{DateTime.Now:HH:mm:ss.fff} ⚠️ EMULATOR pattern failed, trying fallback...\r\n");
                     } catch { }
                     
-                    // TEST 1: OLD STYLE (0xF032 veren)
-                    Debug.WriteLine($"🧪 FALLBACK: OLD STYLE pairing (handle={handle})...");
                     var result1 = Gmp3InterfaceMethods.StartPairingInit_Handle_Old(handle, ref pairing, ref pairingResp, 10000);
-                    Debug.WriteLine($"StartPairingInit_Handle_Old({handle}) rc=0x{result1:X}");
                     if (result1 == 0xF032 || result1 == TRAN_RESULT_OK) return result1;
-                    
-                    // TEST 2: NEW STYLE 1
-                    Debug.WriteLine($"🧪 FALLBACK: NEW STYLE 1 pairing (handle={handle})...");
-                    var result2 = Gmp3InterfaceMethods.StartPairingInit_Handle_NewStyle1(handle, ref pairing, 10000);
-                    Debug.WriteLine($"StartPairingInit_Handle_NewStyle1({handle}) rc=0x{result2:X}");
-                    if (result2 == TRAN_RESULT_OK) return result2;
-                    
-                    // TEST 3: NEW STYLE 2
-                    Debug.WriteLine($"🧪 FALLBACK: NEW STYLE 2 pairing (handle={handle})...");
-                    var result3 = Gmp3InterfaceMethods.StartPairingInit_Handle_NewStyle2(handle, pairing, ref pairingResp, 10000);
-                    Debug.WriteLine($"StartPairingInit_Handle_NewStyle2({handle}) rc=0x{result3:X}");
-                    if (result3 == TRAN_RESULT_OK) return result3;
                 }
                 else
                 {
@@ -275,9 +321,7 @@ namespace GMP3Integration.Infrastructure.Interop
                 var resultStringCdecl = Gmp3InterfaceMethods.StartPairingInit_StringBased(iface, ref pairing);
                 if (resultStringCdecl != DLL_RETCODE_INVALID_INTERFACE) return resultStringCdecl;
                 
-                // TEST: String StdCall convention
-                var resultStringStdCall = Gmp3InterfaceMethods.StartPairingInit_StdCall(iface, ref pairing);
-                if (resultStringStdCall != DLL_RETCODE_INVALID_INTERFACE) return resultStringStdCall;
+                
                 
                 return DLL_RETCODE_INVALID_INTERFACE;
             } 
@@ -294,35 +338,7 @@ namespace GMP3Integration.Infrastructure.Interop
         // === LEGACY COMPATIBILITY METHODS ===
         // These are kept for backward compatibility but should not be used for new code
 
-        internal static int EchoSimple(string iface)
-        {
-            try { return Gmp3InterfaceMethods.EchoSimple(iface); } catch { }
-            return DLL_RETCODE_INVALID_INTERFACE;
-        }
-
-        internal static int EchoWithTimeout(string iface, int timeout)
-        {
-            try { return Gmp3InterfaceMethods.EchoWithTimeout(iface, timeout); } catch { }
-            return DLL_RETCODE_INVALID_INTERFACE;
-        }
-
-        internal static int EchoBasic(string iface)
-        {
-            try { return Gmp3InterfaceMethods.EchoBasic(iface); } catch { }
-            return DLL_RETCODE_INVALID_INTERFACE;
-        }
-
-        internal static int EchoGmp3(string iface)
-        {
-            try { return Gmp3InterfaceMethods.EchoGmp3(iface); } catch { }
-            return DLL_RETCODE_INVALID_INTERFACE;
-        }
-
-        internal static int EchoTest(string iface)
-        {
-            try { return Gmp3InterfaceMethods.EchoTest(iface); } catch { }
-            return DLL_RETCODE_INVALID_INTERFACE;
-        }
+        
 
         internal static int Ping(string iface, int timeout)
         {
@@ -342,11 +358,7 @@ namespace GMP3Integration.Infrastructure.Interop
             return DLL_RETCODE_INVALID_INTERFACE;
         }
 
-        internal static int StartPairingInit_All(string iface, ref Native.Structs.ST_GMP_PAIR pairing, int timeout)
-        {
-            try { return Gmp3InterfaceMethods.StartPairingInit_All(iface, ref pairing, timeout); } catch { }
-            return DLL_RETCODE_INVALID_INTERFACE;
-        }
+
 
         internal static int StartPairingInitWithPairing_All(string iface, ref Native.Structs.ST_GMP_PAIR pairing, ref Native.Structs.ST_GMP_PAIR_RESP pairingResp, int timeout)
         {
@@ -379,6 +391,38 @@ namespace GMP3Integration.Infrastructure.Interop
         {
             try { return Gmp3TransactionMethods.FP3_Start(iface, ref tranHandle, uniqueId, timeout); } catch { }
             return DLL_RETCODE_INVALID_INTERFACE;
+        }
+
+        /// <summary>
+        /// Start transaction - HANDLE-BASED (Emulator Pattern!)
+        /// </summary>
+        internal static int FP3_Start_Handle(uint interfaceHandle, ref ulong tranHandle, byte[] uniqueId, int timeout)
+        {
+            try 
+            { 
+                // Ensure uniqueId is valid
+                if (uniqueId == null || uniqueId.Length == 0)
+                    uniqueId = new byte[24]; // Empty 24-byte array
+                    
+                // Convert uint to IntPtr for P/Invoke
+                var handlePtr = new IntPtr(interfaceHandle);
+                    
+                File.AppendAllText("debug_handle.log", 
+                    $"{DateTime.Now:HH:mm:ss.fff} 🚀 FP3_Start_Handle: handle={interfaceHandle} -> IntPtr={handlePtr}, timeout={timeout}, uniqueId.Length={uniqueId.Length}\r\n");
+                    
+                var result = Gmp3TransactionMethods.FP3_Start_Handle(handlePtr, ref tranHandle, uniqueId, timeout);
+                
+                File.AppendAllText("debug_handle.log", 
+                    $"{DateTime.Now:HH:mm:ss.fff} ✅ FP3_Start_Handle RESULT: 0x{result:X}, tranHandle=0x{tranHandle:X}\r\n");
+                
+                return result;
+            } 
+            catch (Exception ex)
+            { 
+                File.AppendAllText("debug_handle.log", 
+                    $"{DateTime.Now:HH:mm:ss.fff} ❌ FP3_Start_Handle EXCEPTION: {ex.Message}\r\n");
+                return DLL_RETCODE_INVALID_INTERFACE;
+            }
         }
 
         /// <summary>

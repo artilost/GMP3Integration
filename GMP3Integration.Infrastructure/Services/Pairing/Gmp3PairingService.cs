@@ -67,32 +67,12 @@ namespace GMP3Integration.Infrastructure.Services.Pairing
                 _log.LogError("❌ TEST1 EXCEPTION: {exception}", ex.Message);
             }
             
-            // TEST 2: NEW STYLE 1 (response parameter olmadan, 3 parametre)
-            try
-            {
-                var result2 = Gmp3InterfaceMethods.StartPairingInit_Handle_NewStyle1(testHandle, ref pairing, 5000);
-                _log.LogInformation("🧪 TEST2 (NEW STYLE 1): 0x{result:X}", result2);
-            }
-            catch (Exception ex)
-            {
-                _log.LogError("❌ TEST2 EXCEPTION: {exception}", ex.Message);
-            }
-            
-            // TEST 3: NEW STYLE 2 (struct by value)
-            try
-            {
-                var result3 = Gmp3InterfaceMethods.StartPairingInit_Handle_NewStyle2(testHandle, pairing, ref testPairingResp, 5000);
-                _log.LogInformation("🧪 TEST3 (NEW STYLE 2): 0x{result:X}", result3);
-            }
-            catch (Exception ex)
-            {
-                _log.LogError("❌ TEST3 EXCEPTION: {exception}", ex.Message);
-            }
+
             
                             // Emülatördeki gibi sadece StartPairingInit çağır (JSON-based)
                 _log.LogInformation("🔥 StartPairingInit çağrılıyor...");
                 _log.LogWarning("🎯 SERVICE: About to call Gmp3NativeMethods.StartPairingInit_EmulatorWrapper({iface})", iface);
-                var rcInit = Gmp3NativeMethods.StartPairingInit_EmulatorWrapper(iface, ref pairing);
+                var rcInit = Gmp3NativeMethods.StartPairingInit_EmulatorWrapper(iface, ref pairing, true);
                 _log.LogWarning("🎯 SERVICE: Returned from StartPairingInit_EmulatorWrapper with rc=0x{rc:X}", rcInit);
                 _log.LogInformation("🔥 StartPairingInit({iface}) SONUÇ rc=0x{rc:X}", iface, rcInit);
                 
@@ -146,7 +126,7 @@ namespace GMP3Integration.Infrastructure.Services.Pairing
             pairing2.szProcOrderNumber = "000001";
             pairing2.szProcDate = DateTime.Now.ToString("ddMMyy");
             pairing2.szProcTime = DateTime.Now.ToString("HHmmss");
-            var rcInit = Gmp3NativeMethods.StartPairingInit(iface, ref pairing2);  // Emulator pattern wrapper!
+            var rcInit = Gmp3NativeMethods.StartPairingInit_EmulatorWrapper(iface, ref pairing2, true);  // Emulator pattern wrapper!
             _log.LogWarning("StartPairingInit({iface}) rc=0x{rc:X}", iface, rcInit);
 
             // 4) Bekle → Echo/Ping stabilize olana dek
