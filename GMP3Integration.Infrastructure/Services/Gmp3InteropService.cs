@@ -62,9 +62,10 @@ namespace GMP3Integration.Infrastructure.Services
                 {
                     _log.LogInformation("🔍 Interface deneniyor: {iface}", ifaceInput);
                     
-                    // Emulator style: Handle yok, sadece string!
-                    var rc = Gmp3NativeMethods.CreateInterface(ifaceInput);
-                    _log.LogInformation("CreateInterface({iface}) rc=0x{rc:X}", ifaceInput, rc);
+                    // Emulator style: Handle döndürür!
+                    uint interfaceHandle = 0;
+                    var rc = Gmp3NativeMethods.CreateInterface(ifaceInput, ref interfaceHandle);
+                    _log.LogInformation("CreateInterface({iface}) rc=0x{rc:X}, handle={handle}", ifaceInput, rc, interfaceHandle);
                     
                 if (rc == Gmp3NativeMethods.DLL_RETCODE_INVALID_INTERFACE)
                 {
@@ -85,8 +86,8 @@ namespace GMP3Integration.Infrastructure.Services
                     {
                         _log.LogWarning("❌ JSON fonksiyonu bulunamadı - Klasik yöntem deneniyor");
                         // JSON fonksiyonu yoksa klasik yöntemi dene
-                        rc = Gmp3NativeMethods.CreateInterface(ifaceInput);
-                        _log.LogInformation("Klasik CreateInterface({iface}) rc=0x{rc:X}", ifaceInput, rc);
+                        rc = Gmp3NativeMethods.CreateInterface(ifaceInput, ref interfaceHandle);
+                        _log.LogInformation("Klasik CreateInterface({iface}) rc=0x{rc:X}, handle={handle}", ifaceInput, rc, interfaceHandle);
                         
                         if (rc == Gmp3NativeMethods.DLL_RETCODE_INVALID_INTERFACE)
                         {
@@ -140,26 +141,36 @@ namespace GMP3Integration.Infrastructure.Services
                         _log.LogInformation("  - EchoTest: 0x{rc:X}", echoTestRc);
                         _log.LogInformation("  - Echo (string): 0x{rc:X}", echoRc);
                         
-                        // En iyi Echo sonucunu kullan
+                        // En iyi Echo sonucunu kullan - EMULATOR PATTERN: 0x0000 SUCCESS!
                         var bestEchoRc = echoSimpleRc;
-                        if (echoTimeoutRc == Gmp3NativeMethods.TRAN_RESULT_OK || echoTimeoutRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                        if (echoTimeoutRc == Gmp3NativeMethods.TRAN_RESULT_OK)  // 0x0000
                             bestEchoRc = echoTimeoutRc;
-                        else if (echoBasicRc == Gmp3NativeMethods.TRAN_RESULT_OK || echoBasicRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                        else if (echoBasicRc == Gmp3NativeMethods.TRAN_RESULT_OK)  // 0x0000
                             bestEchoRc = echoBasicRc;
-                        else if (echoGmp3Rc == Gmp3NativeMethods.TRAN_RESULT_OK || echoGmp3Rc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                        else if (echoGmp3Rc == Gmp3NativeMethods.TRAN_RESULT_OK)  // 0x0000
                             bestEchoRc = echoGmp3Rc;
-                        else if (echoTestRc == Gmp3NativeMethods.TRAN_RESULT_OK || echoTestRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                        else if (echoTestRc == Gmp3NativeMethods.TRAN_RESULT_OK)  // 0x0000
                             bestEchoRc = echoTestRc;
-                        else if (echoRc == Gmp3NativeMethods.TRAN_RESULT_OK || echoRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                        else if (echoRc == Gmp3NativeMethods.TRAN_RESULT_OK)  // 0x0000
                             bestEchoRc = echoRc;
+                        // FALLBACK: 0xF035 (HANDSHAKE) da kabul et
+                        else if (echoTimeoutRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE || echoRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                            bestEchoRc = (echoTimeoutRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE) ? echoTimeoutRc : echoRc;
                         
                         _log.LogInformation("🎯 En iyi Echo sonucu: 0x{rc:X}", bestEchoRc);
                         
-                        // Echo'yu atla ve direkt pairing'e geç! (Emülatörde de böyle)
-                        _log.LogInformation("🚀 Echo'yu atlayıp direkt pairing'e geçiliyor...");
+                        // Echo kontrolü (emulator style - JSON tabanlı)
+                        if (bestEchoRc == Gmp3NativeMethods.TRAN_RESULT_OK || bestEchoRc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
+                        {
+                            _log.LogInformation("🎉 Echo OK! JSON tabanlı handshake tamamlandı! rc=0x{rc:X}", bestEchoRc);
+                        }
+                        else
+                        {
+                            _log.LogInformation("🚀 Echo başarısız ama devam ediliyor (emulator style)... rc=0x{rc:X}", bestEchoRc);
+                        }
                         
-                        // 2. FP3_StartPairingInit (Pairing) - String-based!
-                        _log.LogInformation("🔧 2. FP3_StartPairingInit (Pairing) deneniyor...");
+                        // 2. FP3_StartPairingInit (Pairing) - JSON-based!
+                        _log.LogInformation("🔧 2. FP3_StartPairingInit (JSON-based Pairing) deneniyor...");
                         var pairingRc = _pairingService.DoQuickPairing(ifaceInput);
                         _log.LogInformation("FP3_StartPairingInit({iface}) rc=0x{rc:X}", ifaceInput, pairingRc);
                         
