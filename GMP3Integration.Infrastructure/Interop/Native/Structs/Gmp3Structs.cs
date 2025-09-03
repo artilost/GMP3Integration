@@ -8,13 +8,13 @@ namespace GMP3Integration.Infrastructure.Interop.Native.Structs
     /// </summary>
     public class ST_GMP_PAIR
     {
-        public string szProcOrderNumber;
-        public string szProcDate;
-        public string szProcTime;
-        public string szExternalDeviceBrand;
-        public string szExternalDeviceModel;
-        public string szExternalDeviceSerialNumber;
-        public string szEcrSerialNumber;
+        public string szProcOrderNumber { get; set; }
+        public string szProcDate { get; set; }
+        public string szProcTime { get; set; }
+        public string szExternalDeviceBrand { get; set; }
+        public string szExternalDeviceModel { get; set; }
+        public string szExternalDeviceSerialNumber { get; set; }
+        public string szEcrSerialNumber { get; set; }
 
         public ST_GMP_PAIR()
         {
@@ -33,12 +33,12 @@ namespace GMP3Integration.Infrastructure.Interop.Native.Structs
     /// </summary>
     public class ST_GMP_PAIR_RESP
     {
-        public uint ErrorCode;
-        public string szVersionNumber;
-        public string szNewVersionNumber;
-        public string szHashFirstDate;
-        public string szHashLastDate;
-        public string szHashExpireDate;
+        public uint ErrorCode { get; set; }
+        public string szVersionNumber { get; set; }
+        public string szNewVersionNumber { get; set; }
+        public string szHashFirstDate { get; set; }
+        public string szHashLastDate { get; set; }
+        public string szHashExpireDate { get; set; }
 
         public ST_GMP_PAIR_RESP()
         {
