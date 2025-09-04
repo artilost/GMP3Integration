@@ -32,7 +32,7 @@ namespace GMP3Integration.Application.Interfaces
         Task<PrintTotalsAndPaymentsResponse> PrintTotalsAndPaymentsAsync(PrintTotalsAndPaymentsRequest request);
         Task<PrintBeforeMfResponse> PrintBeforeMfAsync(PrintBeforeMfRequest request);
         Task<PrintMfResponse> PrintMfAsync(PrintMfRequest request);
-        //Task<CloseTransactionResponse> CloseTransactionAsync(CloseTransactionRequest request);
+        Task<CloseTransactionResponse> CloseTransactionAsync(CloseTransactionRequest request);
         Task<RefundResponse> RefundAsync(RefundRequest request);
         Task<PrintMessageResponse> PrintMessageAsync(PrintMessageRequest request);
         Task<GetTaxRatesResponse> GetTaxRatesAsync();

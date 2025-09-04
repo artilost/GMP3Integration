@@ -1,8 +1,22 @@
+using System;
 using System.Runtime.InteropServices;
 using GMP3Integration.Infrastructure.Interop.Native.Enums;
 
 namespace GMP3Integration.Infrastructure.Interop.Native.Structs
 {
+    /// <summary>
+    /// GMP3 Constants and Defines
+    /// </summary>
+    public static class Defines
+    {
+        public const int MAX_LOYALITY_TRANS_NUMBER = 32;
+    }
+
+    // Placeholder structs for ST_TICKET fields
+    public class ST_SALEINFO { }
+    public class ST_VATDetail { }
+    public class ST_printerDataForOneLine { }
+    public class ST_LOYALTY_SERVICE_INFO { }
     /// <summary>
     /// GMP3 Pairing structure (Emulator Style - No StructLayout)
     /// </summary>
@@ -54,23 +68,142 @@ namespace GMP3Integration.Infrastructure.Interop.Native.Structs
     /// <summary>
     /// GMP3 Ticket structure
     /// </summary>
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    public struct ST_TICKET
+    /// <summary>
+    /// GMP3 Transaction Ticket structure - CORRECT EMULATOR FORMAT
+    /// </summary>
+    public class ST_TICKET
     {
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-        public string TicketNumber;
-        
-        public TTicketType TicketType;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-        public string CashierId;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-        public string CustomerId;
-        
-        public decimal TotalAmount;
-        public decimal TaxAmount;
-        public decimal DiscountAmount;
+        public UInt32 TransactionFlags;
+        public UInt32 OptionFlags;
+        public UInt16 ZNo;
+        public UInt16 FNo;
+        public UInt16 EJNo;
+        public UInt32 TotalReceiptAmount;
+        public UInt32 TotalReceiptTax;
+        public UInt32 TotalReceiptDiscount;
+        public UInt32 TotalReceiptIncrement;
+        public UInt32 CashBackAmount;
+        public UInt32 TotalReceiptItemCancel;
+        public UInt32 TotalReceiptPayment;
+        public UInt32 TotalReceiptReversedPayment;
+        public UInt32 KasaAvansAmount;
+        public UInt32 KasaPaymentAmount;
+        public UInt32 invoiceAmount;
+        public UInt32 invoiceAmountCurrency;
+        public UInt32 KatkiPayiAmount;
+        public UInt32 TaxFreeRefund;
+        public UInt32 TaxFreeCalculated;
+        public string szTicketDate;
+        public string szTicketTime;
+        public UInt16 SourceVasAppID;
+        public UInt16 PaymentVasAppID;
+        public UInt16 BankVasAppID;
+        public byte ticketType;  // This is the TTicketType!
+        public UInt16 totalNumberOfItems;
+        public UInt16 numberOfItemsInThis;
+        public UInt16 totalNumberOfPayments;
+        public UInt16 numberOfPaymentsInThis;
+        public UInt16 numberOfLoyaltyInThis;
+        public string TckNo;
+        public string invoiceNo;
+        public UInt32 invoiceDate;
+        public byte invoiceType;
+        public int totalNumberOfPrinterLines;
+        public int numberOfPrinterLinesInThis;
+        public byte[] uniqueId;
+        public byte[] rawData;
+        public UInt16 rawDataLen;
+        public string LastPaymentErrorCode;        // bank error code
+        public string LastPaymentErrorMsg;         // bank error message
+        public string BankPaymentUniqueId;
+        public ST_SALEINFO[] SaleInfo;
+        public ST_PAYMENT[] stPayment;
+        public ST_VATDetail[] stTaxDetails;
+        public ST_printerDataForOneLine[] stPrinterCopy;
+        public byte[] UserData;
+        public ST_LOYALTY_SERVICE_INFO[] stLoyaltyService;
+        public int CurrencyProfileIndex;
+
+        public ST_TICKET()
+        {
+            TckNo = "";
+            invoiceNo = "";
+            szTicketDate = "";
+            szTicketTime = "";
+            uniqueId = new byte[24];
+            rawData = new byte[512];
+            SaleInfo = new ST_SALEINFO[512];
+            stPayment = new ST_PAYMENT[24];
+            stTaxDetails = new ST_VATDetail[8];
+            stPrinterCopy = new ST_printerDataForOneLine[1024];
+            stLoyaltyService = new ST_LOYALTY_SERVICE_INFO[Defines.MAX_LOYALITY_TRANS_NUMBER];
+            
+            // Initialize other fields
+            TransactionFlags = 0;
+            OptionFlags = 0;
+            ZNo = 0;
+            FNo = 0;
+            EJNo = 0;
+            TotalReceiptAmount = 0;
+            TotalReceiptTax = 0;
+            TotalReceiptDiscount = 0;
+            TotalReceiptIncrement = 0;
+            CashBackAmount = 0;
+            TotalReceiptItemCancel = 0;
+            TotalReceiptPayment = 0;
+            TotalReceiptReversedPayment = 0;
+            KasaAvansAmount = 0;
+            KasaPaymentAmount = 0;
+            invoiceAmount = 0;
+            invoiceAmountCurrency = 0;
+            KatkiPayiAmount = 0;
+            TaxFreeRefund = 0;
+            TaxFreeCalculated = 0;
+            SourceVasAppID = 0;
+            PaymentVasAppID = 0;
+            BankVasAppID = 0;
+            ticketType = 1; // TProcessSale by default
+            totalNumberOfItems = 0;
+            numberOfItemsInThis = 0;
+            totalNumberOfPayments = 0;
+            numberOfPaymentsInThis = 0;
+            numberOfLoyaltyInThis = 0;
+            invoiceDate = 0;
+            invoiceType = 0;
+            totalNumberOfPrinterLines = 0;
+            numberOfPrinterLinesInThis = 0;
+            rawDataLen = 0;
+            LastPaymentErrorCode = "";
+            LastPaymentErrorMsg = "";
+            BankPaymentUniqueId = "";
+            CurrencyProfileIndex = 0;
+        }
+
+        public void Checkelements()
+        {
+            if (TckNo == null)
+                TckNo = "";
+            if (invoiceNo == null)
+                invoiceNo = "";
+            if (szTicketDate == null)
+                szTicketDate = "";
+            if (szTicketTime == null)
+                szTicketTime = "";
+            if (uniqueId == null)
+                uniqueId = new byte[24];
+            if (rawData == null)
+                rawData = new byte[512];
+            if (SaleInfo == null)
+                SaleInfo = new ST_SALEINFO[512];
+            if (stPayment == null)
+                stPayment = new ST_PAYMENT[24];
+            if (stTaxDetails == null)
+                stTaxDetails = new ST_VATDetail[8];
+            if (stPrinterCopy == null)
+                stPrinterCopy = new ST_printerDataForOneLine[1024];
+            if (stLoyaltyService == null)
+                stLoyaltyService = new ST_LOYALTY_SERVICE_INFO[Defines.MAX_LOYALITY_TRANS_NUMBER];
+        }
     }
 
     /// <summary>
