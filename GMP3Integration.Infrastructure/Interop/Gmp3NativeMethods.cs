@@ -394,6 +394,15 @@ namespace GMP3Integration.Infrastructure.Interop
         }
 
         /// <summary>
+        /// Wrapper for FP3_GetCurrentHandle - EMULATOR PATTERN! (HANDLE-BASED)
+        /// </summary>
+        internal static int FP3_GetCurrentHandle(uint interfaceHandle, ref ulong tranHandle, byte[] uniqueId, int maxLengthOfUniqueId, int timeout)
+        {
+            try { return Gmp3TransactionMethods.FP3_GetCurrentHandle(interfaceHandle, ref tranHandle, uniqueId, maxLengthOfUniqueId, timeout); } catch { }
+            return DLL_RETCODE_INVALID_INTERFACE;
+        }
+
+        /// <summary>
         /// Start transaction - HANDLE-BASED (Emulator Pattern!)
         /// </summary>
         internal static int FP3_Start_Handle(uint interfaceHandle, ref ulong tranHandle, byte[] uniqueId, int timeout)
@@ -410,7 +419,13 @@ namespace GMP3Integration.Infrastructure.Interop
                 File.AppendAllText("debug_handle.log", 
                     $"{DateTime.Now:HH:mm:ss.fff} 🚀 FP3_Start_Handle: handle={interfaceHandle} -> IntPtr={handlePtr}, timeout={timeout}, uniqueId.Length={uniqueId.Length}\r\n");
                     
-                var result = Gmp3TransactionMethods.FP3_Start_Handle(handlePtr, ref tranHandle, uniqueId, timeout);
+                // Emulator'daki gibi parameters
+                byte isBackground = 0; // Not background  
+                var uniqueIdSign = new byte[0]; // Empty signature
+                var userData = new byte[0]; // Empty user data
+                
+                var result = Gmp3TransactionMethods.FP3_Start_Handle(interfaceHandle, ref tranHandle, isBackground, 
+                    uniqueId, uniqueId.Length, uniqueIdSign, uniqueIdSign.Length, userData, userData.Length, timeout);
                 
                 File.AppendAllText("debug_handle.log", 
                     $"{DateTime.Now:HH:mm:ss.fff} ✅ FP3_Start_Handle RESULT: 0x{result:X}, tranHandle=0x{tranHandle:X}\r\n");
@@ -425,14 +440,6 @@ namespace GMP3Integration.Infrastructure.Interop
             }
         }
 
-        /// <summary>
-        /// Wrapper for FP3_Close with fallback to legacy methods
-        /// </summary>
-        internal static int FP3_Close(string iface, ulong tranHandle, int timeout)
-        {
-            try { return Gmp3TransactionMethods.FP3_Close(iface, tranHandle, timeout); } catch { }
-            return DLL_RETCODE_INVALID_INTERFACE;
-        }
 
         /// <summary>
         /// Legacy Echo method without timeout for backward compatibility
@@ -441,6 +448,40 @@ namespace GMP3Integration.Infrastructure.Interop
         {
             var echo = new ST_ECHO();
             return Echo(iface, ref echo, Gmp3Constants.DEFAULT_TIMEOUT);
+        }
+
+        /// <summary>
+        /// Send ticket header - CORRECT SIGNATURE (Simple TicketType only!)
+        /// </summary>
+        internal static uint FP3_TicketHeader_Simple(uint interfaceHandle, ulong tranHandle, TTicketType ticketType, int timeout)
+        {
+            try { return Gmp3TransactionMethods.FP3_TicketHeader(interfaceHandle, tranHandle, ticketType, timeout); } catch { }
+            return DLL_RETCODE_INVALID_INTERFACE;
+        }
+
+        /// <summary>
+        /// Close transaction - CORRECT SIGNATURE (Handle-based)
+        /// </summary>
+        internal static uint FP3_Close_Handle(uint interfaceHandle, ulong tranHandle, int timeout)
+        {
+            try 
+            { 
+                File.AppendAllText("debug_handle.log",
+                    $"{DateTime.Now:HH:mm:ss.fff} 🔴 FP3_Close_Handle: iface=0x{interfaceHandle:X}, tran=0x{tranHandle:X}\r\n");
+                
+                var result = Gmp3TransactionMethods.FP3_Close(interfaceHandle, tranHandle, timeout);
+                
+                File.AppendAllText("debug_handle.log",
+                    $"{DateTime.Now:HH:mm:ss.fff} ✅ FP3_Close_Handle RESULT: 0x{result:X}\r\n");
+                
+                return result;
+            } 
+            catch (Exception ex)
+            {
+                File.AppendAllText("debug_handle.log",
+                    $"{DateTime.Now:HH:mm:ss.fff} ❌ FP3_Close_Handle EXCEPTION: {ex.Message}\r\n");
+                return DLL_RETCODE_INVALID_INTERFACE;
+            }
         }
 
         /// <summary>

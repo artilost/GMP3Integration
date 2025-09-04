@@ -11,6 +11,7 @@ using GMP3Integration.Application.DTOs.PrintMessage;
 using GMP3Integration.Application.DTOs.TaxRates;
 using GMP3Integration.Application.DTOs.DepertmenConfiguration;
 using GMP3Integration.Application.DTOs.ForceReset;
+using GMP3Integration.Application.DTOs.CloseTransaction;
 using GMP3Integration.Application.Interfaces;
 using GMP3Integration.Infrastructure.Interop;
 using GMP3Integration.Infrastructure.Services.Pairing;
@@ -22,6 +23,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using GMP3Integration.Infrastructure.Interop.Native.PInvoke;
+using GMP3Integration.Infrastructure.Interop.Native.Enums;
 
 namespace GMP3Integration.Infrastructure.Services
 {
@@ -32,6 +34,19 @@ namespace GMP3Integration.Infrastructure.Services
         private readonly string _xmlPath;
         private readonly Gmp3PairingService _pairingService;
         private readonly Gmp3ConnectionService _connectionService;
+        
+        // Session state tracking
+        private static uint _currentInterfaceHandle = 0;
+        private static ulong _currentTransactionHandle = 0;
+        private static string _currentInterface = "";
+        
+        // Clear session state when transaction ends
+        private static void ClearSessionState()
+        {
+            _currentInterfaceHandle = 0;
+            _currentTransactionHandle = 0;
+            _currentInterface = "";
+        }
 
         public Gmp3InteropService(ILogger<Gmp3InteropService> log)
         {
@@ -101,7 +116,7 @@ namespace GMP3Integration.Infrastructure.Services
                         
                         if (rc == Gmp3NativeMethods.DLL_RETCODE_INVALID_INTERFACE)
                         {
-                            continue;
+                    continue;
                         }
                     }
                     
@@ -135,26 +150,156 @@ namespace GMP3Integration.Infrastructure.Services
                         
                         // 2. FP3_StartPairingInit (Pairing) - JSON-based!
                         _log.LogInformation("🔧 2. FP3_StartPairingInit (JSON-based Pairing) deneniyor...");
-                        var pairingRc = _pairingService.DoQuickPairing(ifaceInput);
+                        int pairingRc = -1;
+                        try 
+                        {
+                            _log.LogInformation("🚀 DoQuickPairing çağrılıyor...");
+                            pairingRc = _pairingService.DoQuickPairing(ifaceInput);
+                            _log.LogInformation("✅ DoQuickPairing tamamlandı: rc=0x{rc:X}", pairingRc);
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.LogError(ex, "❌ DoQuickPairing EXCEPTION: {message}", ex.Message);
+                            pairingRc = Gmp3NativeMethods.DLL_RETCODE_INVALID_INTERFACE;
+                        }
                         _log.LogInformation("FP3_StartPairingInit({iface}) rc=0x{rc:X}", ifaceInput, pairingRc);
                         
                         if (pairingRc == Gmp3NativeMethods.TRAN_RESULT_OK)
                         {
-                            _log.LogInformation("🎉 Pairing başarılı! Direkt SUCCESS dönüyoruz!");
+                            _log.LogInformation("🎉 Pairing başarılı! Emulator sequence devam ediyor...");
                             
-                            // BAŞARILI PAIRING = BAŞARILI ENTEGRASYON!
-                            // FP3_Start'a gerek yok, emulator'da da sadece pairing yapılıyor
+                            // EMULATOR SEQUENCE: Skip GetDepartments & GetCurrency for now
+                            // Emulator uses JSON-based + handle-based versions, we need to implement those first
+                            _log.LogInformation("⏭️ EMULATOR: GetDepartments & GetCurrency skip (JSON-based versions needed)");
                             
-                            return new StartTransactionResponse 
-                            { 
-                                Success = true, 
-                                TransactionHandle = (ulong)interfaceHandle, // Handle'ı transaction handle olarak kullan
-                                Rc = pairingRc,
-                                Message = "GMP3 entegrasyonu başarıyla tamamlandı - Pairing OK!",
-                                Interface = ifaceInput,
-                                InterfaceUsed = ifaceInput,
-                                ExistingOpenTicket = false
-                            };
+                            // Focus on FP3_GetCurrentHandle which is the key for transaction handle
+                            
+                            // 3. FP3_Start - EMERGENCY FALLBACK: String-based ile stable transaction başlat
+                            ulong transactionHandle = 0;
+                            var uniqueId = new byte[24]; // Empty unique ID for ECR to generate
+                            
+                            // CORRECT EMULATOR PATTERN: GetCurrentHandle is for CHECK, then FP3_Start for CREATE
+                            _log.LogInformation("🔍 EMULATOR: FP3_GetCurrentHandle ile mevcut transaction kontrol...");
+                            
+                            // Check existing transaction first (like emulator)
+                            int checkRc = -1;
+                            try 
+                            {
+                                checkRc = Gmp3NativeMethods.FP3_GetCurrentHandle(interfaceHandle, ref transactionHandle, uniqueId, uniqueId.Length, 10000);
+                                _log.LogInformation("🔍 FP3_GetCurrentHandle CHECK: rc=0x{rc:X}, tranHandle=0x{handle:X}", checkRc, transactionHandle);
+                                
+                                // If we have an existing transaction, try to use it (0x90D means active transaction)
+                                if (checkRc == 0x90D && transactionHandle != 0)
+                                {
+                                    _log.LogWarning("⚠️ Existing active transaction found! Handle: 0x{handle:X} - CLOSING IT to ensure clean state", transactionHandle);
+                                    
+                                    // FORCE CLEAN: Close existing transaction
+                                    var closeResult = Gmp3NativeMethods.FP3_Close_Handle(interfaceHandle, transactionHandle, 10000);
+                                    _log.LogInformation("🔄 FP3_Close existing transaction: rc=0x{rc:X}", closeResult);
+                                    
+                                    // Reset for new transaction creation
+                                    transactionHandle = 0;
+                                    
+                                    _log.LogInformation("🆕 Creating fresh transaction after cleanup...");
+                                }
+                            }
+                            catch (Exception ex) 
+                            {
+                                _log.LogError("❌ FP3_GetCurrentHandle CHECK EXCEPTION: {msg}", ex.Message);
+                            }
+                            
+                            // Now CREATE transaction with FP3_Start (like emulator does after check)
+                            _log.LogInformation("🚀 EMULATOR: FP3_Start ile yeni transaction yaratılıyor...");
+                            transactionHandle = 0; // Reset for new transaction
+                            int startRc = -1;
+                            try 
+                            {
+                                // Try handle-based FP3_Start like emulator
+                                startRc = Gmp3NativeMethods.FP3_Start_Handle(interfaceHandle, ref transactionHandle, uniqueId, 10000);
+                                _log.LogInformation("✅ FP3_Start RESULT: rc=0x{rc:X}, tranHandle=0x{handle:X}", startRc, transactionHandle);
+            }
+            catch (Exception ex)
+            {
+                                _log.LogError("❌ FP3_Start EXCEPTION: {msg}", ex.Message);
+                                startRc = Gmp3NativeMethods.DLL_RETCODE_INVALID_INTERFACE;
+                            }
+                            
+                            // 0xF032 might be SUCCESS (old style warning) like in emulator
+                            if (startRc == Gmp3NativeMethods.TRAN_RESULT_OK || startRc == 0xF032)
+                            {
+                                _log.LogInformation("🎉 Transaction başarıyla başlatıldı! Handle: 0x{handle:X}", transactionHandle);
+                                
+                                // Save session state for TicketHeader and other operations
+                                _currentInterfaceHandle = interfaceHandle;
+                                _currentTransactionHandle = transactionHandle;
+                                _currentInterface = ifaceInput;
+                                
+                                _log.LogInformation("💾 Session state saved - Interface: {iface}, IHandle: 0x{ihandle:X}, THandle: 0x{thandle:X}", 
+                                    _currentInterface, _currentInterfaceHandle, _currentTransactionHandle);
+                                
+                                return new StartTransactionResponse 
+                                { 
+                                    Success = true, 
+                                    TransactionHandle = transactionHandle, // GERÇEK transaction handle!
+                                    Rc = startRc,
+                                    Message = "GMP3 transaction başarıyla başlatıldı - Ready for operations!",
+                                    Interface = ifaceInput,
+                                    InterfaceUsed = ifaceInput,
+                                    ExistingOpenTicket = false
+                                };
+                            }
+                            else
+                            {
+                                // Handle specific error cases
+                                if (startRc == Gmp3NativeMethods.APP_ERR_ALREADY_DONE) // 0x820
+                                {
+                                    _log.LogWarning("⚠️ APP_ERR_ALREADY_DONE (0x820) - Transaction already exists! Trying to get current handle...");
+                                    
+                                    // Try to get the existing transaction handle
+                                    try 
+                                    {
+                                        ulong existingHandle = 0;
+                                        var getResult = Gmp3NativeMethods.FP3_GetCurrentHandle(interfaceHandle, ref existingHandle, uniqueId, uniqueId.Length, 10000);
+                                        
+                                        if (getResult == 0x90D && existingHandle != 0)
+                                        {
+                                            _log.LogInformation("✅ Found existing transaction! Handle: 0x{handle:X}", existingHandle);
+                                            
+                                            // Save session state and return existing transaction
+                                            _currentInterfaceHandle = interfaceHandle;
+                                            _currentTransactionHandle = existingHandle;
+                                            _currentInterface = ifaceInput;
+                                            
+                                            return new StartTransactionResponse 
+                                            { 
+                                                Success = true, 
+                                                TransactionHandle = existingHandle,
+                                                Rc = getResult,
+                                                Message = "Using existing transaction (recovered from APP_ERR_ALREADY_DONE)",
+                                                Interface = ifaceInput,
+                                                InterfaceUsed = ifaceInput,
+                                                ExistingOpenTicket = true
+                                            };
+                }
+            }
+            catch (Exception ex)
+            {
+                                        _log.LogError("❌ Recovery attempt failed: {msg}", ex.Message);
+                                    }
+                                }
+                                
+                                _log.LogError("❌ FP3_Start başarısız! rc=0x{rc:X}", startRc);
+                                return new StartTransactionResponse 
+                                { 
+                                    Success = false, 
+                                    TransactionHandle = 0,
+                                    Rc = startRc,
+                                    Message = $"Transaction başlatılamadı - FP3_Start error: 0x{startRc:X}",
+                                    Interface = ifaceInput,
+                                    InterfaceUsed = ifaceInput,
+                                    ExistingOpenTicket = false
+                                };
+                            }
                         }
                         else
                         {
@@ -197,8 +342,82 @@ namespace GMP3Integration.Infrastructure.Services
 
         public async Task<SendTicketHeaderResponse> SendTicketHeaderAsync(SendTicketHeaderRequest request)
         {
-                return new SendTicketHeaderResponse { Success = true };
+            try
+            {
+                _log.LogInformation("🎫 SendTicketHeader başlatılıyor - Handle: 0x{handle:X}, TicketType: {type}", 
+                    request.TransactionHandle, request.TicketType);
+
+                // Ticket struct oluştur - MAP TO CORRECT ENUM VALUES!
+                TTicketType correctTicketType;
+                switch (request.TicketType)
+                {
+                    case 0: // SALE -> TProcessSale
+                        correctTicketType = TTicketType.TProcessSale; // 1 (Fiscal Ticket)
+                        break;
+                    case 1: // REFUND -> TRefund  
+                        correctTicketType = TTicketType.TRefund; // 15 (Non_Fiscal Ticket)
+                        break;
+                    default:
+                        correctTicketType = TTicketType.TProcessSale; // Default to TProcessSale
+                        break;
+                }
+                
+                // DEBUG: Force SALE for now to test
+                _log.LogInformation("🔧 Original TicketType: {orig} -> Mapped: {mapped}({val})", 
+                    request.TicketType, correctTicketType, (int)correctTicketType);
+                
+                // TODO: Maybe we need FP3_GetTicketHeader first for merchant info?
+                // UInt32 FP3_GetTicketHeader(UInt32 hInt, ushort IndexOfHeader, ref ST_TICKET_HEADER pStTicketHeader, ref ushort pNumberOfSpaceTotal, int TimeoutInMiliseconds)
+                
+                // SIMPLE APPROACH: Just pass TicketType enum directly!
+                _log.LogInformation("🎫 SIMPLE CALL - TicketType: {type}({typeVal})", 
+                    correctTicketType, (int)correctTicketType);
+
+                // CORRECT HANDLE USAGE: Use saved session state!
+                if (_currentInterfaceHandle == 0 || _currentTransactionHandle == 0)
+                {
+                    _log.LogError("❌ No active session! InterfaceHandle: 0x{ih:X}, TransactionHandle: 0x{th:X}", 
+                        _currentInterfaceHandle, _currentTransactionHandle);
+                    return new SendTicketHeaderResponse { Success = false };
+                }
+                
+                _log.LogInformation("🔧 FP3_TicketHeader_Simple çağrılıyor - interfaceHandle: 0x{handle:X}", _currentInterfaceHandle);
+                
+                _log.LogInformation("🔧 FP3_TicketHeader parametreleri - interface: 0x{iface:X}, tran: 0x{tran:X}, type: {type}", 
+                    _currentInterfaceHandle, _currentTransactionHandle, correctTicketType);
+                
+                var result = Gmp3NativeMethods.FP3_TicketHeader_Simple(
+                    _currentInterfaceHandle,    // Correct interface handle
+                    _currentTransactionHandle,  // Correct transaction handle
+                    correctTicketType,          // Just the enum type!
+                    10000);
+
+                _log.LogInformation("🎫 FP3_TicketHeader sonucu - rc: 0x{rc:X}", result);
+
+                if (result == 0) // Success
+                {
+                    return new SendTicketHeaderResponse 
+                    { 
+                        Success = true
+                    };
+                }
+                else
+                {
+                    return new SendTicketHeaderResponse 
+                    { 
+                        Success = false
+                    };
+                }
             }
+            catch (Exception ex)
+            {
+                _log.LogError(ex, "❌ SendTicketHeader hatası");
+                return new SendTicketHeaderResponse 
+                { 
+                    Success = false
+                };
+            }
+        }
 
         public async Task<ItemSaleResponse> SaleItemAsync(ItemSaleRequest request)
         {
@@ -227,7 +446,113 @@ namespace GMP3Integration.Infrastructure.Services
 
         public async Task<RefundResponse> RefundAsync(RefundRequest request)
         {
-                return new RefundResponse { Success = true };
+            return new RefundResponse { Success = true };
+        }
+
+        public async Task<CloseTransactionResponse> CloseTransactionAsync(CloseTransactionRequest request)
+        {
+            try
+            {
+                _log.LogInformation("🔴 CloseTransaction başlatılıyor...");
+                
+                // Check if we have active session
+                if (_currentInterfaceHandle == 0 || _currentTransactionHandle == 0)
+                {
+                    _log.LogWarning("⚠️ Aktif transaction yok - Interface: 0x{iface:X}, Transaction: 0x{tran:X}", 
+                        _currentInterfaceHandle, _currentTransactionHandle);
+                    
+                    return new CloseTransactionResponse
+                    {
+                        Success = false,
+                        ResultCode = -1,
+                        Message = "No active transaction to close"
+                    };
+                }
+
+                _log.LogInformation("🔴 Aktif transaction kapatılıyor - Interface: 0x{iface:X}, Transaction: 0x{tran:X}", 
+                    _currentInterfaceHandle, _currentTransactionHandle);
+                
+                // Close transaction using FP3_Close
+                var closeResult = Gmp3NativeMethods.FP3_Close_Handle(_currentInterfaceHandle, _currentTransactionHandle, 10000);
+                _log.LogInformation("🔴 FP3_Close sonucu: 0x{rc:X}", closeResult);
+                
+                // Clear session state after closing
+                ClearSessionState();
+                _log.LogInformation("✅ Session state temizlendi");
+                
+                if (closeResult == 0) // Success
+                {
+                    return new CloseTransactionResponse
+                    {
+                        Success = true,
+                        ResultCode = 0,
+                        Message = "Transaction closed successfully"
+                    };
+                }
+                else
+                {
+                    return new CloseTransactionResponse
+                    {
+                        Success = false,
+                        ResultCode = (int)closeResult,
+                        Message = $"Close failed with code: 0x{closeResult:X}"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.LogError(ex, "❌ CloseTransaction hatası");
+                return new CloseTransactionResponse
+                {
+                    Success = false,
+                    ResultCode = -1,
+                    Message = ex.Message
+                };
+            }
+        }
+
+        public async Task<ForceResetResponse> ForceResetAsync(ForceResetRequest request)
+        {
+            try
+            {
+                _log.LogInformation("🔄 ForceReset başlatılıyor - Session state ve DLL transaction'ları temizleniyor...");
+                
+                // FIRST: Close any active DLL transaction if we have handles
+                if (_currentInterfaceHandle != 0 && _currentTransactionHandle != 0)
+                {
+                    _log.LogInformation("🔴 Aktif DLL transaction kapatılıyor - Interface: 0x{iface:X}, Transaction: 0x{tran:X}", 
+                        _currentInterfaceHandle, _currentTransactionHandle);
+                    
+                    var closeResult = Gmp3NativeMethods.FP3_Close_Handle(_currentInterfaceHandle, _currentTransactionHandle, 10000);
+                    _log.LogInformation("🔴 FP3_Close sonucu: 0x{rc:X}", closeResult);
+                }
+                else
+                {
+                    _log.LogInformation("ℹ️ Aktif transaction handle yok - sadece session state temizleniyor");
+                }
+                
+                // SECOND: Clear our static session state
+                ClearSessionState();
+                
+                _log.LogInformation("✅ Session state ve DLL transaction'ları temizlendi");
+                
+                return new ForceResetResponse 
+                { 
+                    Reset = true,
+                    ResultCode = 0,
+                    Message = "Interface session state cleared successfully"
+                };
+            }
+            catch (Exception ex)
+            {
+                _log.LogError(ex, "❌ ForceReset hatası");
+                return new ForceResetResponse 
+                { 
+                    Reset = false,
+                    ResultCode = -1,
+                    Message = ex.Message
+                };
+            }
         }
 
         public async Task<PrintMessageResponse> PrintMessageAsync(PrintMessageRequest request)
@@ -252,11 +577,7 @@ namespace GMP3Integration.Infrastructure.Services
         public async Task<SetDepartmentsResponse> SetDepartmentsAsync(SetDepartmentsRequest request)
         {
                 return new SetDepartmentsResponse { Success = true };
-        }
-       
-        public async Task<ForceResetResponse> ForceResetAsync(ForceResetRequest request)
-        {
-            return new ForceResetResponse { Reset = true };
-        }
+            }
+
     }
 }

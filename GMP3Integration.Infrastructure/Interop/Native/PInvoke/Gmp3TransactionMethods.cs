@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using GMP3Integration.Infrastructure.Interop.Native.Constants;
+using GMP3Integration.Infrastructure.Interop.Native.Enums;
 using GMP3Integration.Infrastructure.Interop.Native.Structs;
 
 namespace GMP3Integration.Infrastructure.Interop.Native.PInvoke
@@ -14,21 +15,29 @@ namespace GMP3Integration.Infrastructure.Interop.Native.PInvoke
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Start")]
         public static extern int FP3_Start(string iface, ref ulong tranHandle, byte[] uniqueId, int timeout);
 
-        // EMULATOR PATTERN: Handle-based FP3_Start! - IntPtr ile deneyelim
+        // EMULATOR PATTERN: Exact signature like emulator!
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "FP3_Start")]
-        public static extern int FP3_Start_Handle(IntPtr interfaceHandle, ref ulong tranHandle, byte[] uniqueId, int timeout);
+        public static extern int FP3_Start_Handle(uint interfaceHandle, ref ulong tranHandle, byte isBackground, 
+            byte[] uniqueId, int lengthOfUniqueId, byte[] uniqueIdSign, int lengthOfUniqueIdSign, 
+            byte[] userData, int lengthOfUserData, int timeout);
 
-        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, EntryPoint = "FP3_Close")]
-        public static extern int FP3_Close(string iface, ulong tranHandle, int timeout);
+        // CORRECT SIGNATURE from User's emulator code
+        [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_Close", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
+        public static extern UInt32 FP3_Close(UInt32 hInt, UInt64 hTrx, int TimeoutInMiliseconds);
 
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
-        public static extern int FP3_GetTicket(string iface, ulong tranHandle, ref ST_TICKET ticket, int timeout);
+        public static extern int FP3_GetTicket(string iface, ulong tranHandle, ST_TICKET ticket, int timeout);
 
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
         public static extern int FP3_OptionFlags(string iface, ulong tranHandle, int flags, int timeout);
 
-        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
-        public static extern int FP3_TicketHeader(string iface, ulong tranHandle, ref ST_TICKET ticket, int timeout);
+        // CORRECT SIGNATURE from User - Simple TicketType only!
+        [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_TicketHeader", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
+        public static extern UInt32 FP3_TicketHeader(UInt32 hInt, UInt64 hTrx, TTicketType TicketType, int TimeoutInMiliseconds);
+
+        // JSON-based GetTicket (for reading results)
+        [DllImport("GMPSmartDLL.dll", EntryPoint = "Json_FP3_GetTicket", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
+        public static extern UInt32 Json_FP3_GetTicket(UInt32 hInt, UInt64 hTrx, byte[] szJsonTicket_Out, int JsonTicketLen_Out, int TimeoutInMiliseconds);
 
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
         public static extern int FP3_ItemSale(string iface, ulong tranHandle, ref ST_ITEM item, int timeout);
@@ -61,7 +70,7 @@ namespace GMP3Integration.Infrastructure.Interop.Native.PInvoke
         public static extern int FP3_GetPaymentApplicationInfo(string iface, ulong tranHandle, ref ST_PAYMENT_APPLICATION_INFO info, int timeout);
 
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
-        public static extern int FP3_GetCurrentHandle(string iface, ref ulong tranHandle, int timeout);
+        public static extern int FP3_GetCurrentHandle(uint interfaceHandle, ref ulong tranHandle, byte[] uniqueId, int maxLengthOfUniqueId, int timeout);
 
         [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
         public static extern int FP3_PrintUserMessage_Ex(string iface, ulong tranHandle, ref ST_USER_MESSAGE message, int timeout);

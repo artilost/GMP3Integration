@@ -112,10 +112,10 @@ namespace GMP3Integration.Infrastructure.Services.Decorators
 
         public Task<PrintMfResponse> PrintMfAsync(PrintMfRequest request)
             => Execute(() => _inner.PrintMfAsync(request), "PrintMF");
-        /*
         public Task<CloseTransactionResponse> CloseTransactionAsync(CloseTransactionRequest request)
             => Execute(() => _inner.CloseTransactionAsync(request), "CloseTransaction");
        
+        /*
         public Task<CancelTransactionResponse> CancelTransactionAsync(CancelTransactionRequest request)
             => Execute(() => _inner.CancelTransactionAsync(request), "CancelTransaction");
          */

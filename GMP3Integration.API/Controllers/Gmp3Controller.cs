@@ -136,11 +136,13 @@ namespace GMP3Integration.API.Controllers
             return Ok(resp);
         }
 
-        [ServiceFilter(typeof(TransactionHandleScopeFilter))]
+        /// <summary>
+        /// Close active transaction
+        /// </summary>
         [HttpPost("close")]
         public async Task<ActionResult<CloseTransactionResponse>> Close([FromBody] CloseTransactionRequest request)
         {
-            var resp = await _mediator.Send(new CloseTransactionCommand(request));
+            var resp = await _gmp3Service.CloseTransactionAsync(request ?? new CloseTransactionRequest());
             return Ok(resp);
         }
 
@@ -166,5 +168,13 @@ namespace GMP3Integration.API.Controllers
             var resp = await _mediator.Send(new GetTaxRatesQuery());
             return Ok(resp);
         }
+
+        [HttpPost("force-reset")]
+        public async Task<ActionResult<ForceResetResponse>> ForceReset([FromBody] ForceResetRequest request)
+        {
+            var resp = await _gmp3Service.ForceResetAsync(request ?? new ForceResetRequest());
+            return Ok(resp);
+        }
+
     }
 }

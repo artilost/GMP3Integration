@@ -11,6 +11,7 @@ using GMP3Integration.Application.DTOs.PrintMessage;
 using GMP3Integration.Application.DTOs.TaxRates;
 using GMP3Integration.Application.DTOs.DepertmenConfiguration;
 using GMP3Integration.Application.DTOs.ForceReset;
+using GMP3Integration.Application.DTOs.CloseTransaction;
 using GMP3Integration.Application.Interfaces;
 using System.Threading.Tasks;
 
@@ -71,6 +72,11 @@ namespace GMP3Integration.Infrastructure.Services.Transaction
         public async Task<RefundResponse> RefundAsync(RefundRequest request)
         {
             return new RefundResponse { Success = true };
+        }
+
+        public async Task<CloseTransactionResponse> CloseTransactionAsync(CloseTransactionRequest request)
+        {
+            return await _gmp3Service.CloseTransactionAsync(request);
         }
 
         public async Task<PrintMessageResponse> PrintMessageAsync(PrintMessageRequest request)
