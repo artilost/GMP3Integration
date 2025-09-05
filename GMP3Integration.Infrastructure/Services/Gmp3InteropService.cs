@@ -160,8 +160,17 @@ namespace GMP3Integration.Infrastructure.Services
                             _log.LogInformation("✅ DoQuickPairing tamamlandı: rc=0x{rc:X}", pairingRc);
                             
                             // Use the generated handle from StartPairingInit (emulator style)
-                            // Don't override with static handle - keep the generated one!
-                            _log.LogInformation("🔧 Using generated handle: 0x{handle:X}", interfaceHandle);
+                            // Get the generated handle from static variable (set by StartPairingInit)
+                            var generatedHandle = Gmp3NativeMethods.GetCurrentInterfaceHandle();
+                            if (generatedHandle > 0)
+                            {
+                                interfaceHandle = generatedHandle;
+                                _log.LogInformation("🔧 Using generated handle from StartPairingInit: 0x{handle:X}", interfaceHandle);
+                            }
+                            else
+                            {
+                                _log.LogInformation("🔧 Using current interfaceHandle: 0x{handle:X}", interfaceHandle);
+                            }
                             
                             // Session manager'a generated handle'ı aktar
                             Gmp3SessionManager.SetInterfaceHandle(interfaceHandle, ifaceInput);
