@@ -1,5 +1,6 @@
 using GMP3Integration.Infrastructure.Interop;
 using GMP3Integration.Infrastructure.Interop.Native.Structs;
+using GMP3Integration.Infrastructure.Session;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
@@ -28,7 +29,7 @@ namespace GMP3Integration.Infrastructure.Services.Connection
             
             // 1) Echo dene (string ile)
             var echo = new ST_ECHO();
-            var rc = Gmp3NativeMethods.Echo(iface, ref echo, echoTimeoutMs);  // String!
+            var rc = Gmp3NativeMethods.Echo(iface, echoTimeoutMs);  // String!
             _log.LogInformation("ECHO({iface}) rc=0x{rc:X}", iface, rc);
             
             if (rc == Gmp3NativeMethods.TRAN_RESULT_OK || rc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
@@ -48,7 +49,7 @@ namespace GMP3Integration.Infrastructure.Services.Connection
                 
                 // 3) Pairing sonrası Echo tekrar dene
                 _log.LogInformation("🔧 Pairing sonrası Echo tekrar deneniyor...");
-                rc = Gmp3NativeMethods.Echo(iface, ref echo, echoTimeoutMs);  // String!
+                rc = Gmp3NativeMethods.Echo(iface, echoTimeoutMs);  // String!
                 _log.LogInformation("ECHO(pairing sonrası {iface}) rc=0x{rc:X}", iface, rc);
                 
                 if (rc == Gmp3NativeMethods.TRAN_RESULT_OK || rc == Gmp3NativeMethods.DLL_RETCODE_HANDSHAKE)
@@ -76,7 +77,7 @@ namespace GMP3Integration.Infrastructure.Services.Connection
             {
                 // Echo dene (string ile)
                 var echo = new ST_ECHO();
-                var last = Gmp3NativeMethods.Echo(iface, ref echo, echoTimeoutMs);  // String!
+                var last = Gmp3NativeMethods.Echo(iface, echoTimeoutMs);  // String!
                 _log.LogInformation("ECHO(wait {iface}) rc=0x{rc:X}", iface, last);
                 if (last == Gmp3NativeMethods.TRAN_RESULT_OK) 
                 {
