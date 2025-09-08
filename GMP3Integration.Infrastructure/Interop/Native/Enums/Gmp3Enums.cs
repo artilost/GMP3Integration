@@ -60,20 +60,20 @@ namespace GMP3Integration.Infrastructure.Interop.Native.Enums
         TTaxFree = 20,          //Fiscal Ticket
         TDailyMemory = 21,
         TKasaAvans = 22,        //Non_Fiscal Ticket
-        TCariHesap = 23,
-        TDailyReport = 24,
-        TMonthlyReport = 25,
-        TDaily_X_Report = 26,
-        TMonthly_X_Report = 27,
-        TMaliFatura = 28,
-        TSerbestMeslekMakbuzu = 29,
-        TGiderPusulasi = 30,
-        TMustahsilMakbuzu = 31,
-        TBilet = 32,
-        TSerbestMEslekMakbuzuBilgi = 33,
-        T_E_BiletBilgi = 34,
-        T_E_IrsaliyeBilgi = 35,
+        TCariHesap,             //Non_Fiscal Ticket
+        TDailyReport,
+        TMonthlyReport,
+        TDaily_X_Report,
+        TMonthly_X_Report,
+        TMaliFatura,
+        TSerbestMeslekMakbuzu,
+        TGiderPusulasi,
+        TMustahsilMakbuzu,
+        TBilet,
+        TSerbestMEslekMakbuzuBilgi,
+        T_E_BiletBilgi,
+        T_E_IrsaliyeBilgi,
         TUniqueId = 127,
-        TLAST = 255              // Bu satir hep sonda kalmali
+        TLAST                    // Bu satir hep sonda kalmali
     }
 }

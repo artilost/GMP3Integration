@@ -5,11 +5,52 @@ using GMP3Integration.Infrastructure.Interop.Native.Enums;
 namespace GMP3Integration.Infrastructure.Interop.Native.Structs
 {
     /// <summary>
-    /// GMP3 Constants and Defines
+    /// GMP3 Constants and Defines - FROM DOCUMENTATION
     /// </summary>
     public static class Defines
     {
         public const int MAX_LOYALITY_TRANS_NUMBER = 32;
+        
+        // Payment Types (from documentation page 18)
+        public const uint PAYMENT_ALL = 0x000FFFFF;
+        public const uint PAYMENT_CASH_TL = 0x00000001;
+        public const uint PAYMENT_CASH_CURRENCY = 0x00000002;
+        public const uint PAYMENT_BANK_CARD = 0x00000004;
+        public const uint PAYMENT_YEMEKCEKI = 0x00000008;
+        public const uint PAYMENT_MOBILE = 0x00000010;
+        public const uint PAYMENT_HEDIYE_CEKI = 0x00000020;
+        public const uint PAYMENT_IKRAM = 0x00000040;
+        public const uint PAYMENT_ODEMESIZ = 0x00000080;
+        public const uint PAYMENT_KAPORA = 0x00000100;
+        public const uint PAYMENT_PUAN = 0x00000200;
+        public const uint PAYMENT_GIDER_PUSULASI = 0x00000400;
+        public const uint PAYMENT_BANKA_TRANSFERI = 0x00000800;
+        public const uint PAYMENT_CEK = 0x00001000;
+        public const uint PAYMENT_ACIK_HESAP = 0x00002000;
+        public const uint PAYMENT_DIGER = 0x00004000;
+        
+        // Reverse Payment Types (from documentation page 20)
+        public const uint REVERSE_PAYMENT_CASH = 0x00100000;
+        public const uint REVERSE_PAYMENT_BANK_CARD_VOID = 0x00200000;
+        public const uint REVERSE_PAYMENT_BANK_CARD_REFUND = 0x00400000;
+        public const uint REVERSE_PAYMENT_YEMEKCEKI = 0x00800000;
+        public const uint REVERSE_PAYMENT_MOBILE = 0x01000000;
+        public const uint REVERSE_PAYMENT_HEDIYE_CEKI = 0x02000000;
+        public const uint REVERSE_PAYMENT_PUAN = 0x04000000;
+        public const uint REVERSE_PAYMENT_ACIK_HESAP = 0x08000000;
+        public const uint REVERSE_PAYMENT_KAPORA = 0x10000000;
+        public const uint REVERSE_PAYMENT_GIDER_PUSULASI = 0x20000000;
+        public const uint REVERSE_PAYMENT_BANKA_TRANSFERI = 0x40000000;
+        
+        // Currency Codes
+        public const ushort CURRENCY_TL = 949; // Turkish Lira
+        
+        // Bank Transaction Flags (from documentation page 45)
+        public const uint BANK_TRAN_FLAG_ALL_INPUT_FROM_EXTERNAL_SYSTEM = 0x00000001;
+        public const uint BANK_TRAN_FLAG_DO_NOT_ASK_FOR_MISSING_LOYALTY_POINT = 0x00000002;
+        public const uint BANK_TRAN_FLAG_ASK_FOR_MISSING_REFUND_INPUTS = 0x00000004;
+        public const uint BANK_TRAN_FLAG_LOYALTY_POINT_NOT_SUPPORTED_FOR_TRANS = 0x00000008;
+        public const uint BANK_TRAN_FLAG_SALE_WITHOUT_CAMPAIGN = 0x00000010;
     }
 
     // Placeholder structs for ST_TICKET fields
@@ -227,6 +268,75 @@ namespace GMP3Integration.Infrastructure.Interop.Native.Structs
         
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string ApprovalCode;
+        
+        // Emulator'da kullanılan stBankPayment alanı
+        public ST_BANK_PAYMENT stBankPayment;
+    }
+
+    /// <summary>
+    /// GMP3 Bank Payment structure (emulator'da kullanılan)
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct ST_BANK_PAYMENT
+    {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string bankName;
+        
+        public ushort bankBkmId;
+        
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+        public byte[] terminalId;
+        
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        public byte[] merchantId;
+        
+        public uint batchNo;
+        
+        public uint stan;
+        
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        public byte[] authorizeCode;
+        
+        public uint transFlag;
+        
+        public ushort numberOfInstallments;
+        
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string stBankSubPaymentInfo;
+        
+        public ST_PAYMENT_ERROR_MESSAGE stPaymentErrMessage;
+        
+        public ST_CARD stCard;
+    }
+
+    /// <summary>
+    /// GMP3 Payment Error Message structure
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct ST_PAYMENT_ERROR_MESSAGE
+    {
+        public uint ErrorCode;
+        
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string ErrorMsg;
+        
+        public uint AppErrorCode;
+        
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string AppErrorMsg;
+    }
+
+    /// <summary>
+    /// GMP3 Card structure
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct ST_CARD
+    {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string pan;
+        
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string holderName;
     }
 
     /// <summary>
@@ -250,19 +360,174 @@ namespace GMP3Integration.Infrastructure.Interop.Native.Structs
     }
 
     /// <summary>
-    /// GMP3 Payment Request structure
+    /// GMP3 Payment Request structure - CORRECT FROM DOCUMENTATION (Page 18)
     /// </summary>
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    public struct ST_PAYMENT_REQUEST
+    public class ST_PAYMENT_REQUEST
     {
-        public EPaymentTypes PaymentType;
-        public decimal Amount;
+        /// <summary>
+        /// Main payment method - PAYMENT_CASH_TL, PAYMENT_BANK_CARD, etc.
+        /// </summary>
+        public uint typeOfPayment { get; set; }
         
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-        public string Currency;
+        /// <summary>
+        /// Subtype - determines different kind of payment (sale, instalment, etc.)
+        /// </summary>
+        public uint subtypeOfPayment { get; set; }
         
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-        public string Reference;
+        /// <summary>
+        /// Payment amount * 100 (e.g., 150 TL = 15000)
+        /// </summary>
+        public uint payAmount { get; set; }
+        
+        /// <summary>
+        /// Currency code - 949 for Turkish Lira
+        /// </summary>
+        public ushort payAmountCurrencyCode { get; set; }
+        
+        /// <summary>
+        /// Bank BKM ID - 0 for automatic selection
+        /// </summary>
+        public ushort bankBkmId { get; set; }
+        
+        /// <summary>
+        /// Unique ID for payment - must be unique
+        /// </summary>
+        public string BankPaymentUniqueId { get; set; }
+        
+        /// <summary>
+        /// Bonus amount for loyalty sales
+        /// </summary>
+        public uint payAmountBonus { get; set; }
+        
+        /// <summary>
+        /// Number of installments
+        /// </summary>
+        public ushort numberOfinstallments { get; set; }
+        
+        /// <summary>
+        /// Transaction flags for payment options
+        /// </summary>
+        public uint transactionFlag { get; set; }
+        
+        /// <summary>
+        /// Terminal ID for bank transactions
+        /// </summary>
+        public byte[] terminalId { get; set; }
+        
+        /// <summary>
+        /// Original transaction data
+        /// </summary>
+        public _ST_PAYMENT_REQUEST_ORGINAL_DATA OrgTransData { get; set; }
+        
+        /// <summary>
+        /// Batch number
+        /// </summary>
+        public uint batchNo { get; set; }
+        
+        /// <summary>
+        /// STAN number
+        /// </summary>
+        public uint stanNo { get; set; }
+        
+        /// <summary>
+        /// Raw data length
+        /// </summary>
+        public ushort rawDataLen { get; set; }
+        
+        /// <summary>
+        /// Raw data
+        /// </summary>
+        public byte[] rawData { get; set; }
+        
+        /// <summary>
+        /// Payment name
+        /// </summary>
+        public string paymentName { get; set; }
+        
+        /// <summary>
+        /// Payment info
+        /// </summary>
+        public string paymentInfo { get; set; }
+        
+        /// <summary>
+        /// Flags
+        /// </summary>
+        public uint flags { get; set; }
+        
+        /// <summary>
+        /// Loyalty customer ID
+        /// </summary>
+        public string LoyaltyCustomerId { get; set; }
+        
+        /// <summary>
+        /// Payment provision ID
+        /// </summary>
+        public string PaymentProvisionId { get; set; }
+        
+        /// <summary>
+        /// Loyalty service ID
+        /// </summary>
+        public ushort LoyaltyServiceId { get; set; }
+        
+        /// <summary>
+        /// Allowed input
+        /// </summary>
+        public byte AllowedInput { get; set; }
+        
+        public ST_PAYMENT_REQUEST()
+        {
+            typeOfPayment = 0;
+            subtypeOfPayment = 0;
+            payAmount = 0;
+            payAmountCurrencyCode = 949; // Turkish Lira
+            bankBkmId = 0; // Auto select
+            BankPaymentUniqueId = "";
+            payAmountBonus = 0;
+            numberOfinstallments = 0;
+            transactionFlag = 0;
+            terminalId = new byte[8];
+            OrgTransData = new _ST_PAYMENT_REQUEST_ORGINAL_DATA();
+            batchNo = 0;
+            stanNo = 0;
+            rawDataLen = 0;
+            rawData = new byte[512];
+            paymentName = "";
+            paymentInfo = "";
+            flags = 0;
+            LoyaltyCustomerId = "";
+            PaymentProvisionId = "";
+            LoyaltyServiceId = 0;
+            AllowedInput = 0;
+        }
+    }
+
+    /// <summary>
+    /// Original payment request data structure
+    /// </summary>
+    public class _ST_PAYMENT_REQUEST_ORGINAL_DATA
+    {
+        public uint TransactionAmount { get; set; }
+        public uint LoyaltyAmount { get; set; }
+        public ushort NumberOfinstallments { get; set; }
+        public byte[] AuthorizationCode { get; set; }
+        public byte[] rrn { get; set; }
+        public byte[] TransactionDate { get; set; }
+        public byte[] MerchantId { get; set; }
+        public byte TransactionType { get; set; }
+        public byte[] referenceCodeOfTransaction { get; set; }
+
+        public _ST_PAYMENT_REQUEST_ORGINAL_DATA()
+        {
+            TransactionAmount = 0;
+            LoyaltyAmount = 0;
+            NumberOfinstallments = 0;
+            AuthorizationCode = new byte[16];
+            rrn = new byte[16];
+            TransactionDate = new byte[16];
+            MerchantId = new byte[16];
+            TransactionType = 0;
+            referenceCodeOfTransaction = new byte[16];
+        }
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using GMP3Integration.Infrastructure.Interop;
 using GMP3Integration.Infrastructure.Interop.Native.PInvoke;
 using GMP3Integration.Infrastructure.Interop.Native.Structs;
+using GMP3Integration.Infrastructure.Session;
 using Microsoft.Extensions.Logging;
 using System;
 
@@ -34,6 +35,7 @@ namespace GMP3Integration.Infrastructure.Services.Pairing
         /// </summary>
         public int DoQuickPairing(string iface)
         {
+            
             _log.LogInformation("🔧 Hızlı pairing başlatılıyor...");
             
             // Emülatördeki gibi pairing bilgileri oluştur (hardcoded values)
@@ -86,6 +88,7 @@ namespace GMP3Integration.Infrastructure.Services.Pairing
             if (rcInit == Gmp3NativeMethods.TRAN_RESULT_OK)
             {
                 _log.LogInformation("🎉 Pairing başarılı! rc=0x{rc:X}", rcInit);
+                // Handle artık Gmp3SessionManager'da set edildi
             }
             else
             {
@@ -141,7 +144,7 @@ namespace GMP3Integration.Infrastructure.Services.Pairing
 
                 // Klasik Echo dene (handle ile)
                 var echo = new ST_ECHO();
-                last = Gmp3NativeMethods.Echo(iface, ref echo, echoTimeoutMs);
+                last = Gmp3NativeMethods.Echo(iface, echoTimeoutMs);
                 _log.LogInformation("ECHO(wait handle=0x{handle:X}) rc=0x{rc:X}", iface, last);
                 if (last == Gmp3NativeMethods.TRAN_RESULT_OK) 
                 {

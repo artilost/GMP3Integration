@@ -139,6 +139,7 @@
     <Compile Include="Services\Pairing\Gmp3PairingService.cs" />
     <Compile Include="Services\Connection\Gmp3ConnectionService.cs" />
     <Compile Include="Services\Transaction\Gmp3TransactionService.cs" />
+    <Compile Include="Session\Gmp3SessionManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GMP3Integration.Application\GMP3Integration.Application.csproj">

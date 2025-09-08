@@ -32,7 +32,7 @@ namespace GMP3Integration.Application.DTOs
         /// <summary>
         /// Current interface (legacy support)
         /// </summary>
-        [JsonIgnore]
+        [JsonPropertyName("currentInterface")]
         public string CurrentInterface 
         { 
             get => Interface; 

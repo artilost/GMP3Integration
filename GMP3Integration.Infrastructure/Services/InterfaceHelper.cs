@@ -98,6 +98,10 @@ namespace GMP3Integration.Infrastructure.Services
                 
                 // XML dosyasını UTF-8 olarak oku, encoding declaration'ı ignore et
                 var xmlContent = File.ReadAllText(xmlPath, Encoding.UTF8);
+                
+                // Geçersiz XML karakterlerini temizle
+                xmlContent = System.Text.RegularExpressions.Regex.Replace(xmlContent, @"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]", "");
+                
                 // XML declaration'ı kaldır veya UTF-8 olarak değiştir
                 xmlContent = xmlContent.Replace("encoding=\"iso-8859-9\"", "encoding=\"UTF-8\"");
                 if (xmlContent.Contains("<?xml"))

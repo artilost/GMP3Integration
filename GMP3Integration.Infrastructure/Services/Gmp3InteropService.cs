@@ -13,6 +13,7 @@ using GMP3Integration.Application.DTOs.DepertmenConfiguration;
 using GMP3Integration.Application.DTOs.ForceReset;
 using GMP3Integration.Application.DTOs.CloseTransaction;
 using GMP3Integration.Application.Interfaces;
+using GMP3Integration.Infrastructure.Session;
 using GMP3Integration.Infrastructure.Interop;
 using GMP3Integration.Infrastructure.Services.Pairing;
 using GMP3Integration.Infrastructure.Services.Connection;
@@ -35,17 +36,12 @@ namespace GMP3Integration.Infrastructure.Services
         private readonly Gmp3PairingService _pairingService;
         private readonly Gmp3ConnectionService _connectionService;
         
-        // Session state tracking
-        private static uint _currentInterfaceHandle = 0;
-        private static ulong _currentTransactionHandle = 0;
-        private static string _currentInterface = "";
+        // Session state artık Gmp3SessionManager'da yönetiliyor
         
         // Clear session state when transaction ends
         private static void ClearSessionState()
         {
-            _currentInterfaceHandle = 0;
-            _currentTransactionHandle = 0;
-            _currentInterface = "";
+            Gmp3SessionManager.ClearSession();
         }
 
         public Gmp3InteropService(ILogger<Gmp3InteropService> log)
@@ -85,9 +81,15 @@ namespace GMP3Integration.Infrastructure.Services
                     // CRITICAL: Gerçek handle'ı GetInterfaceHandleByID ile al!
                     if (rc == Gmp3NativeMethods.TRAN_RESULT_OK || rc == Gmp3NativeMethods.DLL_RETCODE_CREATE_INTERFACE_SUCCESS)
                     {
+                        _log.LogInformation("🔧 BEFORE GetInterfaceHandleByID: interfaceHandle=0x{handle:X}", interfaceHandle);
                         var ifaceBytes = System.Text.Encoding.ASCII.GetBytes(ifaceInput + "\0");
                         var handleResult = Gmp3InterfaceMethods.FP3_GetInterfaceHandleByID(ref interfaceHandle, ifaceBytes);
                         _log.LogInformation("GetInterfaceHandleByID({iface}) result=0x{result:X}, realHandle={realHandle}", ifaceInput, handleResult, interfaceHandle);
+                        _log.LogInformation("🔧 AFTER GetInterfaceHandleByID: interfaceHandle=0x{handle:X}", interfaceHandle);
+                        
+                        // CRITICAL: GetInterfaceHandleByID returns wrong handle, use CreateInterface handle instead
+                        // CreateInterface returns 0 but that's OK, we'll get the real handle from StartPairingInit
+                        _log.LogInformation("🔧 GetInterfaceHandleByID returned wrong handle, will use StartPairingInit handle later");
                     }
                     
                     _log.LogInformation("CreateInterface({iface}) rc=0x{rc:X}, handle={handle}", ifaceInput, rc, interfaceHandle);
@@ -133,7 +135,7 @@ namespace GMP3Integration.Infrastructure.Services
                         // EMULATOR PATTERN: Clean Echo call
                         _log.LogInformation("🔧 Echo (Handshake) deneniyor...");
                         var echo = new ST_ECHO();
-                        var bestEchoRc = Gmp3NativeMethods.Echo(ifaceInput, ref echo, 10000);
+                        var bestEchoRc = Gmp3NativeMethods.Echo(ifaceInput, 10000);
                         _log.LogInformation("FP3_Echo({iface}) rc=0x{rc:X}", ifaceInput, bestEchoRc);
                         
                         _log.LogInformation("🎯 En iyi Echo sonucu: 0x{rc:X}", bestEchoRc);
@@ -156,6 +158,22 @@ namespace GMP3Integration.Infrastructure.Services
                             _log.LogInformation("🚀 DoQuickPairing çağrılıyor...");
                             pairingRc = _pairingService.DoQuickPairing(ifaceInput);
                             _log.LogInformation("✅ DoQuickPairing tamamlandı: rc=0x{rc:X}", pairingRc);
+                            
+                            // Use the generated handle from StartPairingInit (emulator style)
+                            // Get the generated handle from static variable (set by StartPairingInit)
+                            var generatedHandle = Gmp3NativeMethods.GetCurrentInterfaceHandle();
+                            if (generatedHandle > 0)
+                            {
+                                interfaceHandle = generatedHandle;
+                                _log.LogInformation("🔧 Using generated handle from StartPairingInit: 0x{handle:X}", interfaceHandle);
+                            }
+                            else
+                            {
+                                _log.LogInformation("🔧 Using current interfaceHandle: 0x{handle:X}", interfaceHandle);
+                            }
+                            
+                            // Session manager'a generated handle'ı aktar
+                            Gmp3SessionManager.SetInterfaceHandle(interfaceHandle, ifaceInput);
                         }
                         catch (Exception ex)
                         {
@@ -167,6 +185,9 @@ namespace GMP3Integration.Infrastructure.Services
                         if (pairingRc == Gmp3NativeMethods.TRAN_RESULT_OK)
                         {
                             _log.LogInformation("🎉 Pairing başarılı! Emulator sequence devam ediyor...");
+                            
+                            // Handle is already set from DoQuickPairing above
+                            _log.LogInformation("🔧 Handle already set from DoQuickPairing: 0x{handle:X}", interfaceHandle);
                             
                             // EMULATOR SEQUENCE: Skip GetDepartments & GetCurrency for now
                             // Emulator uses JSON-based + handle-based versions, we need to implement those first
@@ -185,7 +206,7 @@ namespace GMP3Integration.Infrastructure.Services
                             int checkRc = -1;
                             try 
                             {
-                                checkRc = Gmp3NativeMethods.FP3_GetCurrentHandle(interfaceHandle, ref transactionHandle, uniqueId, uniqueId.Length, 10000);
+                                checkRc = Gmp3NativeMethods.FP3_GetCurrentHandle(interfaceHandle, ref transactionHandle);
                                 _log.LogInformation("🔍 FP3_GetCurrentHandle CHECK: rc=0x{rc:X}, tranHandle=0x{handle:X}", checkRc, transactionHandle);
                                 
                                 // If we have an existing transaction, try to use it (0x90D means active transaction)
@@ -230,12 +251,10 @@ namespace GMP3Integration.Infrastructure.Services
                                 _log.LogInformation("🎉 Transaction başarıyla başlatıldı! Handle: 0x{handle:X}", transactionHandle);
                                 
                                 // Save session state for TicketHeader and other operations
-                                _currentInterfaceHandle = interfaceHandle;
-                                _currentTransactionHandle = transactionHandle;
-                                _currentInterface = ifaceInput;
+                                Gmp3SessionManager.SetInterfaceHandle(interfaceHandle, ifaceInput);
+                                Gmp3SessionManager.SetTransactionHandle(transactionHandle);
                                 
-                                _log.LogInformation("💾 Session state saved - Interface: {iface}, IHandle: 0x{ihandle:X}, THandle: 0x{thandle:X}", 
-                                    _currentInterface, _currentInterfaceHandle, _currentTransactionHandle);
+                                _log.LogInformation("💾 Session state saved - {sessionInfo}", Gmp3SessionManager.GetSessionInfo());
                                 
                                 return new StartTransactionResponse 
                                 { 
@@ -259,16 +278,15 @@ namespace GMP3Integration.Infrastructure.Services
                                     try 
                                     {
                                         ulong existingHandle = 0;
-                                        var getResult = Gmp3NativeMethods.FP3_GetCurrentHandle(interfaceHandle, ref existingHandle, uniqueId, uniqueId.Length, 10000);
+                                        var getResult = Gmp3NativeMethods.FP3_GetCurrentHandle(interfaceHandle, ref existingHandle);
                                         
                                         if (getResult == 0x90D && existingHandle != 0)
                                         {
                                             _log.LogInformation("✅ Found existing transaction! Handle: 0x{handle:X}", existingHandle);
                                             
                                             // Save session state and return existing transaction
-                                            _currentInterfaceHandle = interfaceHandle;
-                                            _currentTransactionHandle = existingHandle;
-                                            _currentInterface = ifaceInput;
+                                            Gmp3SessionManager.SetInterfaceHandle(interfaceHandle, ifaceInput);
+                                            Gmp3SessionManager.SetTransactionHandle(existingHandle);
                                             
                                             return new StartTransactionResponse 
                                             { 
@@ -347,19 +365,25 @@ namespace GMP3Integration.Infrastructure.Services
                 _log.LogInformation("🎫 SendTicketHeader başlatılıyor - Handle: 0x{handle:X}, TicketType: {type}", 
                     request.TransactionHandle, request.TicketType);
 
-                // Ticket struct oluştur - MAP TO CORRECT ENUM VALUES!
+                // Ticket struct oluştur - TÜM ENUM DEĞERLERİNİ DESTEKLE!
                 TTicketType correctTicketType;
-                switch (request.TicketType)
+                
+                // DEBUG: TLAST değerini kontrol et
+                var tlastValue = (int)TTicketType.TLAST;
+                _log.LogInformation("🔍 DEBUG: TLAST değeri = {tlast}", tlastValue);
+                
+                // Sadece enum'da tanımlı değerleri kabul et
+                if (Enum.IsDefined(typeof(TTicketType), request.TicketType))
                 {
-                    case 0: // SALE -> TProcessSale
-                        correctTicketType = TTicketType.TProcessSale; // 1 (Fiscal Ticket)
-                        break;
-                    case 1: // REFUND -> TRefund  
-                        correctTicketType = TTicketType.TRefund; // 15 (Non_Fiscal Ticket)
-                        break;
-                    default:
-                        correctTicketType = TTicketType.TProcessSale; // Default to TProcessSale
-                        break;
+                    correctTicketType = (TTicketType)request.TicketType;
+                }
+                else
+                {
+                    // Enum'da tanımlı değil - hata döndür
+                    var validValues = string.Join(", ", Enum.GetValues(typeof(TTicketType)).Cast<int>());
+                    _log.LogError("❌ Geçersiz TicketType: {type}. Geçerli değerler: {valid}", 
+                        request.TicketType, validValues);
+                    return new SendTicketHeaderResponse { Success = false };
                 }
                 
                 // DEBUG: Force SALE for now to test
@@ -374,22 +398,21 @@ namespace GMP3Integration.Infrastructure.Services
                     correctTicketType, (int)correctTicketType);
 
                 // CORRECT HANDLE USAGE: Use saved session state!
-                if (_currentInterfaceHandle == 0 || _currentTransactionHandle == 0)
+                if (!Gmp3SessionManager.IsSessionActive || !Gmp3SessionManager.IsTransactionActive)
                 {
-                    _log.LogError("❌ No active session! InterfaceHandle: 0x{ih:X}, TransactionHandle: 0x{th:X}", 
-                        _currentInterfaceHandle, _currentTransactionHandle);
+                    _log.LogError("❌ No active session! {sessionInfo}", Gmp3SessionManager.GetSessionInfo());
                     return new SendTicketHeaderResponse { Success = false };
                 }
                 
-                _log.LogInformation("🔧 FP3_TicketHeader_Simple çağrılıyor - interfaceHandle: 0x{handle:X}", _currentInterfaceHandle);
+                _log.LogInformation("🔧 FP3_TicketHeader_Simple çağrılıyor - interfaceHandle: 0x{handle:X}", Gmp3SessionManager.InterfaceHandle);
                 
                 _log.LogInformation("🔧 FP3_TicketHeader parametreleri - interface: 0x{iface:X}, tran: 0x{tran:X}, type: {type}", 
-                    _currentInterfaceHandle, _currentTransactionHandle, correctTicketType);
+                    Gmp3SessionManager.InterfaceHandle, Gmp3SessionManager.TransactionHandle, correctTicketType);
                 
                 var result = Gmp3NativeMethods.FP3_TicketHeader_Simple(
-                    _currentInterfaceHandle,    // Correct interface handle
-                    _currentTransactionHandle,  // Correct transaction handle
-                    correctTicketType,          // Just the enum type!
+                    Gmp3SessionManager.InterfaceHandle,    // Correct interface handle
+                    Gmp3SessionManager.TransactionHandle,  // Correct transaction handle
+                    ((int)correctTicketType).ToString(),   // Convert enum to int string (not enum name!)
                     10000);
 
                 _log.LogInformation("🎫 FP3_TicketHeader sonucu - rc: 0x{rc:X}", result);
@@ -403,6 +426,33 @@ namespace GMP3Integration.Infrastructure.Services
                 }
                 else
                 {
+                    // Ticket Header hata aldı - transaction state bozulmuş olabilir
+                    _log.LogWarning("⚠️ Ticket Header failed with rc=0x{rc:X} - Transaction state may be corrupted", result);
+                    
+                    // Transaction'ı temizle ve yeniden başlat
+                    try
+                    {
+                        _log.LogInformation("🔄 Cleaning up corrupted transaction...");
+                        // Create dummy structs for FP3_Close
+                        var closePair = new ST_GMP_PAIR();
+                        var responseTicket = new ST_TICKET();
+                        
+                        var closeResult = Gmp3NativeMethods.FP3_Close(
+                            Gmp3SessionManager.Interface, 
+                            ref closePair, 
+                            ref responseTicket, 
+                            10000);
+                        _log.LogInformation("🔄 FP3_Close cleanup result: rc=0x{rc:X}", closeResult);
+                        
+                        // Session'ı temizle
+                        Gmp3SessionManager.ClearSession();
+                        _log.LogInformation("🧹 Session cleared - need to restart transaction");
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        _log.LogError(cleanupEx, "❌ Transaction cleanup failed");
+                    }
+                    
                     return new SendTicketHeaderResponse 
                     { 
                         Success = false
@@ -424,10 +474,6 @@ namespace GMP3Integration.Infrastructure.Services
                 return new ItemSaleResponse { Success = true };
             }
 
-        public async Task<PaymentResponse> MakePaymentAsync(PaymentRequest request)
-        {
-                return new PaymentResponse { Success = true };
-            }
 
         public async Task<PrintTotalsAndPaymentsResponse> PrintTotalsAndPaymentsAsync(PrintTotalsAndPaymentsRequest request)
         {
@@ -456,10 +502,9 @@ namespace GMP3Integration.Infrastructure.Services
                 _log.LogInformation("🔴 CloseTransaction başlatılıyor...");
                 
                 // Check if we have active session
-                if (_currentInterfaceHandle == 0 || _currentTransactionHandle == 0)
+                if (!Gmp3SessionManager.IsSessionActive || !Gmp3SessionManager.IsTransactionActive)
                 {
-                    _log.LogWarning("⚠️ Aktif transaction yok - Interface: 0x{iface:X}, Transaction: 0x{tran:X}", 
-                        _currentInterfaceHandle, _currentTransactionHandle);
+                    _log.LogWarning("⚠️ Aktif transaction yok - {sessionInfo}", Gmp3SessionManager.GetSessionInfo());
                     
                     return new CloseTransactionResponse
                     {
@@ -469,11 +514,10 @@ namespace GMP3Integration.Infrastructure.Services
                     };
                 }
 
-                _log.LogInformation("🔴 Aktif transaction kapatılıyor - Interface: 0x{iface:X}, Transaction: 0x{tran:X}", 
-                    _currentInterfaceHandle, _currentTransactionHandle);
+                _log.LogInformation("🔴 Aktif transaction kapatılıyor - {sessionInfo}", Gmp3SessionManager.GetSessionInfo());
                 
                 // Close transaction using FP3_Close
-                var closeResult = Gmp3NativeMethods.FP3_Close_Handle(_currentInterfaceHandle, _currentTransactionHandle, 10000);
+                var closeResult = Gmp3NativeMethods.FP3_Close_Handle_Wrapper(Gmp3SessionManager.InterfaceHandle, Gmp3SessionManager.TransactionHandle, 10000);
                 _log.LogInformation("🔴 FP3_Close sonucu: 0x{rc:X}", closeResult);
                 
                 // Clear session state after closing
@@ -518,12 +562,12 @@ namespace GMP3Integration.Infrastructure.Services
                 _log.LogInformation("🔄 ForceReset başlatılıyor - Session state ve DLL transaction'ları temizleniyor...");
                 
                 // FIRST: Close any active DLL transaction if we have handles
-                if (_currentInterfaceHandle != 0 && _currentTransactionHandle != 0)
+                if (Gmp3SessionManager.IsSessionActive && Gmp3SessionManager.IsTransactionActive)
                 {
                     _log.LogInformation("🔴 Aktif DLL transaction kapatılıyor - Interface: 0x{iface:X}, Transaction: 0x{tran:X}", 
-                        _currentInterfaceHandle, _currentTransactionHandle);
+                        Gmp3SessionManager.InterfaceHandle, Gmp3SessionManager.TransactionHandle);
                     
-                    var closeResult = Gmp3NativeMethods.FP3_Close_Handle(_currentInterfaceHandle, _currentTransactionHandle, 10000);
+                                                    var closeResult = Gmp3NativeMethods.FP3_Close_Handle_Wrapper(Gmp3SessionManager.InterfaceHandle, Gmp3SessionManager.TransactionHandle, 10000);
                     _log.LogInformation("🔴 FP3_Close sonucu: 0x{rc:X}", closeResult);
                 }
                 else
@@ -552,6 +596,199 @@ namespace GMP3Integration.Infrastructure.Services
                     ResultCode = -1,
                     Message = ex.Message
                 };
+            }
+        }
+
+        public async Task<PaymentResponse> MakePaymentAsync(PaymentRequest request)
+        {
+            _log.LogInformation("💳 MakePaymentAsync başlatılıyor - Amount: {amount}, Type: {type}", request.PayAmount, request.TypeOfPayment);
+            
+            try
+            {
+                // Validate session state
+                if (!Gmp3SessionManager.IsSessionActive || !Gmp3SessionManager.IsTransactionActive)
+                {
+                    _log.LogError("❌ No active session! {sessionInfo}", Gmp3SessionManager.GetSessionInfo());
+                    return new PaymentResponse { Success = false, Message = "No active transaction session" };
+                }
+                
+                // Create ST_PAYMENT_REQUEST from DTO (emulator fields)
+                var paymentRequest = new ST_PAYMENT_REQUEST
+                {
+                    // Basic fields
+                    typeOfPayment = MapPaymentType(request.TypeOfPayment),
+                    subtypeOfPayment = MapSubtypeOfPayment(request.SubtypeOfPayment), 
+                    payAmount = (uint)request.PayAmount, // Already in correct format (amount * 100)
+                    payAmountCurrencyCode = (ushort)request.PayAmountCurrencyCode,
+                    BankPaymentUniqueId = !string.IsNullOrEmpty(request.BankPaymentUniqueId) 
+                        ? request.BankPaymentUniqueId 
+                        : Guid.NewGuid().ToString(), // Generate unique ID if not provided
+                    
+                    // Emulator fields
+                    flags = request.Flags,
+                    bankBkmId = request.BankBkmId,
+                    batchNo = request.BatchNo,
+                    stanNo = request.Stan,
+                    transactionFlag = request.TransFlag,
+                    terminalId = !string.IsNullOrEmpty(request.TerminalId) 
+                        ? System.Text.Encoding.UTF8.GetBytes(request.TerminalId.PadRight(8, '\0')) 
+                        : new byte[8],
+                    paymentName = "", // Will be set by constructor
+                    paymentInfo = "", // Will be set by constructor
+                    LoyaltyCustomerId = "", // Will be set by constructor
+                    PaymentProvisionId = "", // Will be set by constructor
+                    LoyaltyServiceId = 0, // Will be set by constructor
+                    AllowedInput = 0 // Will be set by constructor
+                };
+                
+                _log.LogInformation("💳 Payment Request: type={type}, amount={amount}, currency={currency}, uniqueId={uniqueId}", 
+                    paymentRequest.typeOfPayment, paymentRequest.payAmount, paymentRequest.payAmountCurrencyCode, paymentRequest.BankPaymentUniqueId);
+                
+                // Response ticket
+                var responseTicket = new ST_TICKET();
+                
+                // Call native payment method with current interface string
+                // Use the same handle that was used for StartPairingInit (generated handle)
+                // Get the generated handle from session manager
+                var interfaceHandle = Gmp3SessionManager.InterfaceHandle;
+                _log.LogInformation("💳 Payment using interface handle: 0x{handle:X}", interfaceHandle);
+                
+                var result = Gmp3NativeMethods.FP3_Payment_Handle(
+                    interfaceHandle,
+                    Gmp3SessionManager.TransactionHandle,
+                    paymentRequest,
+                    ref responseTicket,
+                    10000,
+                    Gmp3SessionManager.Interface); // Pass the actual interface string
+                
+                _log.LogInformation("💳 FP3_Payment result: 0x{rc:X}", result);
+                
+                if (result == 0) // Success only
+                {
+                    return new PaymentResponse
+                    {
+                        Success = true,
+                        PaymentId = paymentRequest.BankPaymentUniqueId,
+                        ResultCode = result,
+                        Message = "Payment processed successfully"
+                    };
+                }
+                else
+                {
+                    // Check for specific error codes from documentation
+                    var errorMessage = GetPaymentErrorMessage(result);
+                    
+                    return new PaymentResponse
+                    {
+                        Success = false,
+                        PaymentId = paymentRequest.BankPaymentUniqueId,
+                        ResultCode = result,
+                        Message = errorMessage
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.LogError(ex, "❌ MakePaymentAsync exception");
+                return new PaymentResponse
+                {
+                    Success = false,
+                    ResultCode = -1,
+                    Message = ex.Message
+                };
+            }
+        }
+        
+        /// <summary>
+        /// Map payment type string to correct uint value from documentation
+        /// </summary>
+        private uint MapPaymentType(string paymentType)
+        {
+            // C# 7.3 compatible switch statement
+            switch (paymentType?.ToUpperInvariant())
+            {
+                case "CASH":
+                    return Defines.PAYMENT_CASH_TL;
+                case "CASH_TL":
+                    return Defines.PAYMENT_CASH_TL;
+                case "CREDIT_CARD":
+                    return Defines.PAYMENT_BANK_CARD;
+                case "BANK_CARD":
+                    return Defines.PAYMENT_BANK_CARD;
+                case "YEMEKCEKI":
+                    return Defines.PAYMENT_YEMEKCEKI;
+                case "MOBILE":
+                    return Defines.PAYMENT_MOBILE;
+                default:
+                    return Defines.PAYMENT_CASH_TL; // Default to cash
+            }
+        }
+        
+        /// <summary>
+        /// Map payment subtype string to uint value 
+        /// </summary>
+        private uint MapSubtypeOfPayment(string subtypeOfPayment)
+        {
+            // Try to parse as uint first
+            if (uint.TryParse(subtypeOfPayment, out uint result))
+            {
+                return result;
+            }
+            
+            // If it's a string, map to known values
+            switch (subtypeOfPayment?.ToUpperInvariant())
+            {
+                case "SALE":
+                case "REGULAR":
+                case "NORMAL":
+                    return 0; // Regular sale
+                case "INSTALLMENT":
+                case "TAKSIT":
+                    return 1; // Installment sale
+                case "BONUS":
+                case "LOYALTY":
+                    return 2; // Bonus/Loyalty sale
+                default:
+                    return 0; // Default to regular sale
+            }
+        }
+        
+        /// <summary>
+        /// Get payment error message from documentation error codes
+        /// </summary>
+        private string GetPaymentErrorMessage(int errorCode)
+        {
+            // C# 7.3 compatible switch statement
+            switch (errorCode)
+            {
+                case 0x2021:
+                    return "Payment must be completed (APP_ERR_APL_COMPLETE_PAYMENT)";
+                case 0x2022:
+                    return "Credit amount cannot be bigger than remaining amount";
+                case 0x2085:
+                    return "Payment not successful - no specific error code";
+                case 0x2086:
+                    return "Payment not successful - check payment details";
+                case 0x2088:
+                    return "VAS (Card application) not available";
+                case 0x2119:
+                    return "Food voucher payment error - check department settings";
+                case 0x2440:
+                    return "Payment application not found on device";
+                case 0xF020:
+                    return "Pairing required - please pair device first";
+                case 0xF000:
+                    return "Port not open - check connection";
+                case 0xF003:
+                    return "Timeout - payment took too long";
+                case 0xF035:
+                    return "Handshake error - device communication issue, pairing may be required";
+                case 0xF025:
+                    return "JSON serialization error - payment data format issue";
+                case 0x2025:
+                    return "Test fallback - JSON payment method not working (temporary)";
+                default:
+                    return $"Payment failed with error code: 0x{errorCode:X}";
             }
         }
 
