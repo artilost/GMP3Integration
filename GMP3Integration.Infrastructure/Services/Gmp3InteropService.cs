@@ -412,7 +412,7 @@ namespace GMP3Integration.Infrastructure.Services
                 var result = Gmp3NativeMethods.FP3_TicketHeader_Simple(
                     Gmp3SessionManager.InterfaceHandle,    // Correct interface handle
                     Gmp3SessionManager.TransactionHandle,  // Correct transaction handle
-                    correctTicketType.ToString(),          // Convert enum to string (çalışan versiyondaki gibi)
+                    ((int)correctTicketType).ToString(),   // Convert enum to int string (not enum name!)
                     10000);
 
                 _log.LogInformation("🎫 FP3_TicketHeader sonucu - rc: 0x{rc:X}", result);
@@ -426,6 +426,33 @@ namespace GMP3Integration.Infrastructure.Services
                 }
                 else
                 {
+                    // Ticket Header hata aldı - transaction state bozulmuş olabilir
+                    _log.LogWarning("⚠️ Ticket Header failed with rc=0x{rc:X} - Transaction state may be corrupted", result);
+                    
+                    // Transaction'ı temizle ve yeniden başlat
+                    try
+                    {
+                        _log.LogInformation("🔄 Cleaning up corrupted transaction...");
+                        // Create dummy structs for FP3_Close
+                        var closePair = new ST_GMP_PAIR();
+                        var responseTicket = new ST_TICKET();
+                        
+                        var closeResult = Gmp3NativeMethods.FP3_Close(
+                            Gmp3SessionManager.Interface, 
+                            ref closePair, 
+                            ref responseTicket, 
+                            10000);
+                        _log.LogInformation("🔄 FP3_Close cleanup result: rc=0x{rc:X}", closeResult);
+                        
+                        // Session'ı temizle
+                        Gmp3SessionManager.ClearSession();
+                        _log.LogInformation("🧹 Session cleared - need to restart transaction");
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        _log.LogError(cleanupEx, "❌ Transaction cleanup failed");
+                    }
+                    
                     return new SendTicketHeaderResponse 
                     { 
                         Success = false
@@ -585,21 +612,33 @@ namespace GMP3Integration.Infrastructure.Services
                     return new PaymentResponse { Success = false, Message = "No active transaction session" };
                 }
                 
-                // Create ST_PAYMENT_REQUEST from documentation
+                // Create ST_PAYMENT_REQUEST from DTO (emulator fields)
                 var paymentRequest = new ST_PAYMENT_REQUEST
                 {
-                    // Documentation mapping (Page 18)
+                    // Basic fields
                     typeOfPayment = MapPaymentType(request.TypeOfPayment),
                     subtypeOfPayment = MapSubtypeOfPayment(request.SubtypeOfPayment), 
                     payAmount = (uint)request.PayAmount, // Already in correct format (amount * 100)
                     payAmountCurrencyCode = (ushort)request.PayAmountCurrencyCode,
-                    bankBkmId = 0, // Auto-select bank application
                     BankPaymentUniqueId = !string.IsNullOrEmpty(request.BankPaymentUniqueId) 
                         ? request.BankPaymentUniqueId 
                         : Guid.NewGuid().ToString(), // Generate unique ID if not provided
-                    payAmountBonus = 0, // No bonus for now
-                    numberOfinstallments = 0, // No installments for now
-                    transactionFlag = 0 // No special flags
+                    
+                    // Emulator fields
+                    flags = request.Flags,
+                    bankBkmId = request.BankBkmId,
+                    batchNo = request.BatchNo,
+                    stanNo = request.Stan,
+                    transactionFlag = request.TransFlag,
+                    terminalId = !string.IsNullOrEmpty(request.TerminalId) 
+                        ? System.Text.Encoding.UTF8.GetBytes(request.TerminalId.PadRight(8, '\0')) 
+                        : new byte[8],
+                    paymentName = "", // Will be set by constructor
+                    paymentInfo = "", // Will be set by constructor
+                    LoyaltyCustomerId = "", // Will be set by constructor
+                    PaymentProvisionId = "", // Will be set by constructor
+                    LoyaltyServiceId = 0, // Will be set by constructor
+                    AllowedInput = 0 // Will be set by constructor
                 };
                 
                 _log.LogInformation("💳 Payment Request: type={type}, amount={amount}, currency={currency}, uniqueId={uniqueId}", 

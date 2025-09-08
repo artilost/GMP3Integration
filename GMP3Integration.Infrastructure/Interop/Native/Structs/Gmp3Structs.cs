@@ -268,6 +268,75 @@ namespace GMP3Integration.Infrastructure.Interop.Native.Structs
         
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string ApprovalCode;
+        
+        // Emulator'da kullanılan stBankPayment alanı
+        public ST_BANK_PAYMENT stBankPayment;
+    }
+
+    /// <summary>
+    /// GMP3 Bank Payment structure (emulator'da kullanılan)
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct ST_BANK_PAYMENT
+    {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string bankName;
+        
+        public ushort bankBkmId;
+        
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+        public byte[] terminalId;
+        
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        public byte[] merchantId;
+        
+        public uint batchNo;
+        
+        public uint stan;
+        
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        public byte[] authorizeCode;
+        
+        public uint transFlag;
+        
+        public ushort numberOfInstallments;
+        
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string stBankSubPaymentInfo;
+        
+        public ST_PAYMENT_ERROR_MESSAGE stPaymentErrMessage;
+        
+        public ST_CARD stCard;
+    }
+
+    /// <summary>
+    /// GMP3 Payment Error Message structure
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct ST_PAYMENT_ERROR_MESSAGE
+    {
+        public uint ErrorCode;
+        
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string ErrorMsg;
+        
+        public uint AppErrorCode;
+        
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string AppErrorMsg;
+    }
+
+    /// <summary>
+    /// GMP3 Card structure
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct ST_CARD
+    {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string pan;
+        
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string holderName;
     }
 
     /// <summary>

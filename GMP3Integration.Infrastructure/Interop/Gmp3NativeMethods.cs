@@ -516,14 +516,13 @@ namespace GMP3Integration.Infrastructure.Interop
             try 
             {
                 // Get the correct handle from session (like emulator)
-                // Use hardcoded working handle from logs
-                var sessionHandle = (uint)652162138; // Hardcoded working handle
+                var sessionHandle = interfaceHandle; // Use the passed handle parameter
                 
                 try 
                 {
                     var logPath = Path.Combine(Environment.CurrentDirectory, "debug_handle.log");
                     File.AppendAllText(logPath, 
-                        $"{DateTime.Now:HH:mm:ss.fff} 🔧 HARDCODED HANDLE SET: sessionHandle = 0x{sessionHandle:X}\r\n");
+                        $"{DateTime.Now:HH:mm:ss.fff} 🔧 SESSION HANDLE SET: sessionHandle = 0x{sessionHandle:X}\r\n");
                 }
                 catch { }
                 
@@ -534,27 +533,50 @@ namespace GMP3Integration.Infrastructure.Interop
                     File.AppendAllText(logPath, 
                         $"{DateTime.Now:HH:mm:ss.fff} 🔧 Classical Payment params: iface='{interfaceString}', hTrx=0x{tranHandle:X}\r\n");
                     File.AppendAllText(logPath, 
-                        $"{DateTime.Now:HH:mm:ss.fff} 🔧 Using hardcoded handle: 0x{sessionHandle:X} (hardcoded working handle)\r\n");
+                        $"{DateTime.Now:HH:mm:ss.fff} 🔧 Using session handle: 0x{sessionHandle:X} (from session)\r\n");
                 }
                 catch { }
                 
-                // Use JSON method like emulator (emulator style)
-                // Serialize payment request to JSON
-                var jsonRequest = JsonSerializer.Serialize(paymentRequest, new JsonSerializerOptions 
-                { 
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping 
+                // Prepare JSON data for payment (like emulator)
+                // Convert payment request to JSON (ONLY ST_PAYMENT_REQUEST fields)
+                var paymentJson = System.Text.Json.JsonSerializer.Serialize(new {
+                    transactionHandle = (long)tranHandle, // Transaction handle as long (not string!)
+                    typeOfPayment = paymentRequest.typeOfPayment,
+                    subtypeOfPayment = paymentRequest.subtypeOfPayment,
+                    payAmount = paymentRequest.payAmount,
+                    payAmountCurrencyCode = paymentRequest.payAmountCurrencyCode,
+                    BankPaymentUniqueId = paymentRequest.BankPaymentUniqueId,
+                    
+                    // ST_PAYMENT_REQUEST fields only
+                    flags = paymentRequest.flags,
+                    bankBkmId = paymentRequest.bankBkmId,
+                    batchNo = paymentRequest.batchNo,
+                    stanNo = paymentRequest.stanNo,
+                    transactionFlag = paymentRequest.transactionFlag,
+                    payAmountBonus = paymentRequest.payAmountBonus,
+                    numberOfinstallments = paymentRequest.numberOfinstallments,
+                    terminalId = paymentRequest.terminalId,
+                    rawDataLen = paymentRequest.rawDataLen,
+                    rawData = paymentRequest.rawData,
+                    paymentName = paymentRequest.paymentName,
+                    paymentInfo = paymentRequest.paymentInfo,
+                    LoyaltyCustomerId = paymentRequest.LoyaltyCustomerId,
+                    PaymentProvisionId = paymentRequest.PaymentProvisionId,
+                    LoyaltyServiceId = paymentRequest.LoyaltyServiceId,
+                    AllowedInput = paymentRequest.AllowedInput
                 });
                 
-                var jsonBytes = System.Text.Encoding.UTF8.GetBytes(jsonRequest);
-                var responseBuffer = new byte[4096];
+                var jsonBytes = System.Text.Encoding.UTF8.GetBytes(paymentJson);
+                var responseBuffer = new byte[1024];
                 
-                var result = Gmp3TransactionMethods.Json_FP3_Payment(sessionHandle, tranHandle, jsonBytes, new byte[0], 0, responseBuffer, responseBuffer.Length, timeout);
+                // Use JSON-based method (like emulator)
+                var result = Json_FP3_Payment(interfaceHandle, tranHandle, jsonBytes, jsonBytes.Length, responseBuffer, responseBuffer.Length, timeout);
                 
                 try 
                 {
                     var logPath = Path.Combine(Environment.CurrentDirectory, "debug_handle.log");
                     File.AppendAllText(logPath, 
-                        $"{DateTime.Now:HH:mm:ss.fff} 💳 JSON Payment Result: 0x{result:X}\r\n");
+                        $"{DateTime.Now:HH:mm:ss.fff} 💳 Classical Payment Result: 0x{result:X}\r\n");
                 }
                 catch { }
                 

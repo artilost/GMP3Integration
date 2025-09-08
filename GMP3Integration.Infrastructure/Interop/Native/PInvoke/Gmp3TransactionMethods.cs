@@ -43,8 +43,12 @@ namespace GMP3Integration.Infrastructure.Interop.Native.PInvoke
         public static extern int FP3_ItemSale(string iface, ulong tranHandle, ref ST_ITEM item, int timeout);
 
         // CORRECT Payment from Documentation (Page 18) - Uses ST_PAYMENT_REQUEST & ST_TICKET
-        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [DllImport("GMPSmartDLL.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         public static extern int FP3_Payment(string iface, ulong tranHandle, ref ST_PAYMENT_REQUEST paymentRequest, ref ST_TICKET ticket, int timeout);
+
+        // Handle-based Payment (like TicketHeader) - Use same entry point but different signature
+        [DllImport("GMPSmartDLL.dll", EntryPoint = "FP3_Payment", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        public static extern uint FP3_Payment_Handle(uint hInt, ulong hTrx, ST_PAYMENT_REQUEST paymentRequest, ST_TICKET ticket, int timeout);
 
         // JSON-based Payment (Emulator style) - Takes byte[] for JSON serialization
         [DllImport("GMPSmartDLL.dll", EntryPoint = "Json_FP3_Payment", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
