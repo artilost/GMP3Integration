@@ -615,24 +615,21 @@ namespace GMP3Integration.Infrastructure.Services
                 // Create ST_PAYMENT_REQUEST from DTO (emulator fields)
                 var paymentRequest = new ST_PAYMENT_REQUEST
                 {
-                    // Basic fields
-                    typeOfPayment = MapPaymentType(request.TypeOfPayment),
-                    subtypeOfPayment = MapSubtypeOfPayment(request.SubtypeOfPayment), 
-                    payAmount = (uint)request.PayAmount, // Already in correct format (amount * 100)
-                    payAmountCurrencyCode = (ushort)request.PayAmountCurrencyCode,
+                    // Basic fields - direkt uint değerler kullan
+                    typeOfPayment = request.TypeOfPayment,
+                    subtypeOfPayment = request.SubtypeOfPayment, 
+                    payAmount = request.PayAmount, // Already in correct format (amount * 100)
+                    payAmountCurrencyCode = request.PayAmountCurrencyCode,
                     BankPaymentUniqueId = !string.IsNullOrEmpty(request.BankPaymentUniqueId) 
                         ? request.BankPaymentUniqueId 
                         : Guid.NewGuid().ToString(), // Generate unique ID if not provided
                     
-                    // Emulator fields
-                    flags = request.Flags,
+                    // Doküman gereksinimlerine göre alanlar
                     bankBkmId = request.BankBkmId,
-                    batchNo = request.BatchNo,
-                    stanNo = request.Stan,
-                    transactionFlag = request.TransFlag,
-                    terminalId = !string.IsNullOrEmpty(request.TerminalId) 
-                        ? System.Text.Encoding.UTF8.GetBytes(request.TerminalId.PadRight(8, '\0')) 
-                        : new byte[8],
+                    transactionFlag = request.TransactionFlag,
+                    payAmountBonus = request.PayAmountBonus,
+                    numberOfinstallments = request.NumberOfinstallments,
+                    terminalId = new byte[8], // Default empty
                     paymentName = "", // Will be set by constructor
                     paymentInfo = "", // Will be set by constructor
                     LoyaltyCustomerId = "", // Will be set by constructor
@@ -699,59 +696,6 @@ namespace GMP3Integration.Infrastructure.Services
             }
         }
         
-        /// <summary>
-        /// Map payment type string to correct uint value from documentation
-        /// </summary>
-        private uint MapPaymentType(string paymentType)
-        {
-            // C# 7.3 compatible switch statement
-            switch (paymentType?.ToUpperInvariant())
-            {
-                case "CASH":
-                    return Defines.PAYMENT_CASH_TL;
-                case "CASH_TL":
-                    return Defines.PAYMENT_CASH_TL;
-                case "CREDIT_CARD":
-                    return Defines.PAYMENT_BANK_CARD;
-                case "BANK_CARD":
-                    return Defines.PAYMENT_BANK_CARD;
-                case "YEMEKCEKI":
-                    return Defines.PAYMENT_YEMEKCEKI;
-                case "MOBILE":
-                    return Defines.PAYMENT_MOBILE;
-                default:
-                    return Defines.PAYMENT_CASH_TL; // Default to cash
-            }
-        }
-        
-        /// <summary>
-        /// Map payment subtype string to uint value 
-        /// </summary>
-        private uint MapSubtypeOfPayment(string subtypeOfPayment)
-        {
-            // Try to parse as uint first
-            if (uint.TryParse(subtypeOfPayment, out uint result))
-            {
-                return result;
-            }
-            
-            // If it's a string, map to known values
-            switch (subtypeOfPayment?.ToUpperInvariant())
-            {
-                case "SALE":
-                case "REGULAR":
-                case "NORMAL":
-                    return 0; // Regular sale
-                case "INSTALLMENT":
-                case "TAKSIT":
-                    return 1; // Installment sale
-                case "BONUS":
-                case "LOYALTY":
-                    return 2; // Bonus/Loyalty sale
-                default:
-                    return 0; // Default to regular sale
-            }
-        }
         
         /// <summary>
         /// Get payment error message from documentation error codes

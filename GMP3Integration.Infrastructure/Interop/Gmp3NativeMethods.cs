@@ -537,33 +537,18 @@ namespace GMP3Integration.Infrastructure.Interop
                 }
                 catch { }
                 
-                // Prepare JSON data for payment (like emulator)
-                // Convert payment request to JSON (ONLY ST_PAYMENT_REQUEST fields)
+                // Prepare JSON data for payment - SADECE DOKÜMANDA BELİRTİLEN 9 ALAN
+                // Emulator'ün beklediği format: sadece temel alanlar
                 var paymentJson = System.Text.Json.JsonSerializer.Serialize(new {
-                    transactionHandle = (long)tranHandle, // Transaction handle as long (not string!)
                     typeOfPayment = paymentRequest.typeOfPayment,
                     subtypeOfPayment = paymentRequest.subtypeOfPayment,
                     payAmount = paymentRequest.payAmount,
                     payAmountCurrencyCode = paymentRequest.payAmountCurrencyCode,
-                    BankPaymentUniqueId = paymentRequest.BankPaymentUniqueId,
-                    
-                    // ST_PAYMENT_REQUEST fields only
-                    flags = paymentRequest.flags,
                     bankBkmId = paymentRequest.bankBkmId,
-                    batchNo = paymentRequest.batchNo,
-                    stanNo = paymentRequest.stanNo,
-                    transactionFlag = paymentRequest.transactionFlag,
+                    BankPaymentUniqueId = paymentRequest.BankPaymentUniqueId,
                     payAmountBonus = paymentRequest.payAmountBonus,
                     numberOfinstallments = paymentRequest.numberOfinstallments,
-                    terminalId = paymentRequest.terminalId,
-                    rawDataLen = paymentRequest.rawDataLen,
-                    rawData = paymentRequest.rawData,
-                    paymentName = paymentRequest.paymentName,
-                    paymentInfo = paymentRequest.paymentInfo,
-                    LoyaltyCustomerId = paymentRequest.LoyaltyCustomerId,
-                    PaymentProvisionId = paymentRequest.PaymentProvisionId,
-                    LoyaltyServiceId = paymentRequest.LoyaltyServiceId,
-                    AllowedInput = paymentRequest.AllowedInput
+                    transactionFlag = paymentRequest.transactionFlag
                 });
                 
                 var jsonBytes = System.Text.Encoding.UTF8.GetBytes(paymentJson);

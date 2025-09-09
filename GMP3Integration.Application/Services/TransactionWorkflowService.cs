@@ -122,12 +122,12 @@ namespace GMP3Integration.Application.Services
                 var pay = request.Payment;
                 var payReq = new PaymentRequest
                 {
-                    TransactionHandle = handle,
-                    // Doküman isimleri → PaymentRequest alanları (aşağıda ekleyeceğiz)
-                    TypeOfPayment = pay.TypeOfPayment,
-                    SubtypeOfPayment = pay.SubtypeOfPayment,
-                    PayAmount = pay.PayAmount,
-                    PayAmountCurrencyCode = pay.PayAmountCurrencyCode,
+                    // PaymentRequest'te artık TransactionHandle yok
+                    // Doküman isimleri → PaymentRequest alanları
+                    TypeOfPayment = MapPaymentType(pay.TypeOfPayment),
+                    SubtypeOfPayment = MapSubtypeOfPayment(pay.SubtypeOfPayment),
+                    PayAmount = (uint)pay.PayAmount,
+                    PayAmountCurrencyCode = (ushort)pay.PayAmountCurrencyCode,
                     BankPaymentUniqueId = string.IsNullOrWhiteSpace(pay.BankPaymentUniqueId) ? string.Empty : pay.BankPaymentUniqueId
                 };
                 await _gmp3Service.MakePaymentAsync(payReq);
@@ -167,6 +167,58 @@ namespace GMP3Integration.Application.Services
                     TransactionHandle = handle,
                     Success = true
                 };
+            }
+        }
+
+        /// <summary>
+        /// Map payment type string to correct uint value from documentation
+        /// </summary>
+        private uint MapPaymentType(string paymentType)
+        {
+            // C# 7.3 compatible switch statement
+            switch (paymentType?.ToUpperInvariant())
+            {
+                case "CASH":
+                case "CASH_TL":
+                    return 0x00000001; // PAYMENT_CASH_TL
+                case "CREDIT_CARD":
+                case "BANK_CARD":
+                    return 0x00000004; // PAYMENT_BANK_CARD
+                case "YEMEKCEKI":
+                    return 0x00000008; // PAYMENT_YEMEKCEKI
+                case "MOBILE":
+                    return 0x00000010; // PAYMENT_MOBILE
+                default:
+                    return 0x00000001; // Default to cash
+            }
+        }
+        
+        /// <summary>
+        /// Map payment subtype string to uint value 
+        /// </summary>
+        private uint MapSubtypeOfPayment(string subtypeOfPayment)
+        {
+            // Try to parse as uint first
+            if (uint.TryParse(subtypeOfPayment, out uint result))
+            {
+                return result;
+            }
+            
+            // If it's a string, map to known values
+            switch (subtypeOfPayment?.ToUpperInvariant())
+            {
+                case "SALE":
+                case "REGULAR":
+                case "NORMAL":
+                    return 0; // Regular sale
+                case "INSTALLMENT":
+                case "TAKSIT":
+                    return 1; // Installment sale
+                case "BONUS":
+                case "LOYALTY":
+                    return 2; // Bonus/Loyalty sale
+                default:
+                    return 0; // Default to regular sale
             }
         }
     }

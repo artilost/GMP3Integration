@@ -9,77 +9,44 @@ namespace GMP3Integration.Application.DTOs.Payment
 {
     public class PaymentRequest
     {
-        [JsonPropertyName("transactionHandle")]
-        public ulong TransactionHandle { get; set; }
-
-        // Doküman adlarıyla 1:1 - JSON camelCase mapping
+        // Doküman Sayfa 18 - FP3_Payment için gerekli alanlar (9 alan)
         [JsonPropertyName("typeOfPayment")]
-        public string TypeOfPayment { get; set; }
+        public uint TypeOfPayment { get; set; }
         
         [JsonPropertyName("subtypeOfPayment")]
-        public string SubtypeOfPayment { get; set; }
+        public uint SubtypeOfPayment { get; set; }
         
         [JsonPropertyName("payAmount")]
-        public int PayAmount { get; set; }             // TL*100
+        public uint PayAmount { get; set; }             // TL*100
         
         [JsonPropertyName("payAmountCurrencyCode")]
-        public int PayAmountCurrencyCode { get; set; } // 949
-        
-        [JsonPropertyName("bankPaymentUniqueId")]
-        public string BankPaymentUniqueId { get; set; }   // opsiyonel
-
-        // Emulator'da kullanılan ek alanlar
-        [JsonPropertyName("flags")]
-        public uint Flags { get; set; }
-        
-        [JsonPropertyName("dateOfPayment")]
-        public uint DateOfPayment { get; set; }
-        
-        [JsonPropertyName("orgAmount")]
-        public uint OrgAmount { get; set; }
-        
-        [JsonPropertyName("orgAmountCurrencyCode")]
-        public ushort OrgAmountCurrencyCode { get; set; }
-        
-        [JsonPropertyName("cashBackAmountInTL")]
-        public uint CashBackAmountInTL { get; set; }
+        public ushort PayAmountCurrencyCode { get; set; } // 949
         
         [JsonPropertyName("bankBkmId")]
         public ushort BankBkmId { get; set; }
         
-        [JsonPropertyName("terminalId")]
-        public string TerminalId { get; set; }
+        [JsonPropertyName("bankPaymentUniqueId")]
+        public string BankPaymentUniqueId { get; set; }   // opsiyonel
         
-        [JsonPropertyName("merchantId")]
-        public string MerchantId { get; set; }
+        [JsonPropertyName("payAmountBonus")]
+        public uint PayAmountBonus { get; set; }
         
-        [JsonPropertyName("batchNo")]
-        public uint BatchNo { get; set; }
+        [JsonPropertyName("numberOfinstallments")]
+        public ushort NumberOfinstallments { get; set; }
         
-        [JsonPropertyName("stan")]
-        public uint Stan { get; set; }
-        
-        [JsonPropertyName("authorizeCode")]
-        public string AuthorizeCode { get; set; }
-        
-        [JsonPropertyName("transFlag")]
-        public uint TransFlag { get; set; }
-        
-        // Emulator'da kullanılan bankName alanı
-        [JsonPropertyName("bankName")]
-        public string BankName { get; set; }
+        [JsonPropertyName("transactionFlag")]
+        public uint TransactionFlag { get; set; }
 
         public PaymentRequest()
         {
-            TypeOfPayment = "";
-            SubtypeOfPayment = "";
+            TypeOfPayment = 0;
+            SubtypeOfPayment = 0;
             BankPaymentUniqueId = "";
             PayAmountCurrencyCode = 949; // Default Turkish Lira
-            OrgAmountCurrencyCode = 949; // Default Turkish Lira
-            TerminalId = "";
-            MerchantId = "";
-            AuthorizeCode = "";
-            BankName = "";
+            BankBkmId = 0; // Auto select
+            TransactionFlag = 0;
+            PayAmountBonus = 0;
+            NumberOfinstallments = 0;
         }
     }
 }
