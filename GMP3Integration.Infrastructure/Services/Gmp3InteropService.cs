@@ -363,7 +363,7 @@ namespace GMP3Integration.Infrastructure.Services
             try
             {
                 _log.LogInformation("🎫 SendTicketHeader başlatılıyor - Handle: 0x{handle:X}, TicketType: {type}", 
-                    request.TransactionHandle, request.TicketType);
+                    Gmp3SessionManager.InterfaceHandle, request.TicketType);
 
                 // Ticket struct oluştur - TÜM ENUM DEĞERLERİNİ DESTEKLE!
                 TTicketType correctTicketType;

@@ -8,7 +8,6 @@ namespace GMP3Integration.Application.DTOs.TicketHeader
 {
     public class SendTicketHeaderRequest
     {
-        public ulong TransactionHandle { get; set; }
         public int TicketType { get; set; }
     }
 }

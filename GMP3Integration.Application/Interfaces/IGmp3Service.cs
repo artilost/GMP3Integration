@@ -37,7 +37,6 @@ namespace GMP3Integration.Application.Interfaces
         Task<PrintMessageResponse> PrintMessageAsync(PrintMessageRequest request);
         Task<GetTaxRatesResponse> GetTaxRatesAsync();
         Task<SetDepartmentsResponse> SetDepartmentsAsync(SetDepartmentsRequest request);
-        //Task<CancelTransactionResponse> CancelTransactionAsync(CancelTransactionRequest request);
         Task<ForceResetResponse> ForceResetAsync(ForceResetRequest request);
     }
 }

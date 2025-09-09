@@ -93,7 +93,6 @@ namespace GMP3Integration.Application.Services
                 await _gmp3Service.SendTicketHeaderAsync(
                     new SendTicketHeaderRequest
                     {
-                        TransactionHandle = handle,
                         TicketType = request.TicketType
                     });
 
