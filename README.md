@@ -65,7 +65,7 @@ GMP3Integration/
 
 ## 📚 Documentation
 
-See `Staj_Raporu_Ornek_Kodlar.md` for detailed code examples and explanations.
+See `PROJE_DEVREDILME_DOKUMANI.md` for detailed code examples and explanations.
 
 ## 👨‍💻 Author
 
